@@ -119,7 +119,7 @@ test('rejects an entry with a corrupted CRC-32', async () => {
     const altered = new Blob([bytes]);
     const entries = await ZIP.directory(altered);
     await ZIP.read(altered, entries[0]);
-  }, /CRC-32 inválido|metadados.*conflitantes/i);
+  }, /CRC-32 inválido|diferem do diretório central/i);
 });
 
 test('exports deterministic CRC-32 values', () => {
