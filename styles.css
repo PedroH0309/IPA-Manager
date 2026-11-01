@@ -117,3 +117,14 @@
   .signature-audit .detail-line { gap:12px; flex-wrap:wrap; }
   .signature-audit .detail-line b { overflow-wrap:anywhere; }
 }
+
+/* Provisioning profile diagnostic, local-first and responsive */
+.provisioning-panel { display: grid; gap: 12px; }
+.provisioning-panel.hidden { display: none; }
+#provisioningResults { display: grid; gap: 7px; }
+.provisioning-warnings { margin: 6px 0 0; font-size: 11px; line-height: 1.55; color: #eac18d; overflow-wrap: anywhere; }
+.provisioning-panel .detail-line b { overflow-wrap:anywhere; text-align:right; }
+@media (max-width: 640px) {
+  .provisioning-panel .signature-audit-heading button { width:100%; }
+  .provisioning-panel .detail-line { align-items:start; gap:12px; }
+}
