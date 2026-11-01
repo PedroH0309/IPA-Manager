@@ -29,7 +29,7 @@
       <button class="nav-item" data-view="catalog"><span class="nav-icon">◈</span> Catálogo</button>
       <button class="nav-item" data-view="sources"><span class="nav-icon">◎</span> Fontes</button>
       <button class="nav-item" data-view="library"><span class="nav-icon">▣</span> Biblioteca</button>
-      <div class="sidebar-bottom"><div class="side-note"><span class="shield">✓</span><div><b>Privacidade primeiro</b><small>Os arquivos selecionados são processados no navegador. Não enviamos IPA para nossos servidores.</small></div></div><span class="version">IPA Manager · Preview 0.6.0</span></div>
+      <div class="sidebar-bottom"><div class="side-note"><span class="shield">✓</span><div><b>Privacidade primeiro</b><small>Os arquivos selecionados são processados no navegador. Não enviamos IPA para nossos servidores.</small></div></div><span class="version">IPA Manager · Preview 0.7.0</span></div>
     </aside>
 
     <section class="content">
@@ -95,6 +95,16 @@
             <div id="signatureAuditResults"></div>
             <p class="signature-disclaimer">Não substitui validação de CMS, certificados Apple, perfis ou verificação pelo iOS. Hashes conferindo não provam que um IPA pode ser instalado.</p>
           </section>
+          <section class="signature-card provisioning-panel hidden" id="provisioningPanel" aria-labelledby="provisioningHeading">
+            <div class="signature-audit-heading">
+              <div><strong id="provisioningHeading">Diagnóstico de provisionamento</strong><small>Leitura local do embedded.mobileprovision, sem envio ao servidor</small></div>
+              <button class="secondary-button" id="inspectProvisioning" type="button">Analisar perfil de provisionamento</button>
+            </div>
+            <p class="signature-audit-status" id="provisioningStatus" role="status">Aguardando arquivo IPA.</p>
+            <div id="provisioningResults"></div>
+            <div class="file-actions"><button class="secondary-button hidden" id="provisioningExport" type="button">Exportar relatório JSON</button></div>
+            <p class="signature-disclaimer">Não verifica CMS nem certificados; não solicita UDID e não conclui se um app pode ser instalado. Um perfil ausente ou com metadados coerentes não comprova elegibilidade.</p>
+          </section>
         </div>
         <div class="section-heading"><div><span class="eyebrow">RECURSOS</span><h2>O que a análise consegue confirmar</h2></div></div>
         <div class="capability-grid"><div><span>01</span><b>Estrutura ZIP</b><small>Diretórios, caminhos, tamanhos e métodos de compressão.</small></div><div><span>02</span><b>Metadados</b><small>Bundle ID, versão, nome e versão mínima do iOS.</small></div><div><span>03</span><b>Indicadores</b><small>Presença de arquivos de assinatura e perfil de provisionamento.</small></div><div><span>04</span><b>Integridade</b><small>SHA-256 e CRC dos arquivos que forem lidos.</small></div></div>
@@ -141,6 +151,7 @@
   <script src="zip-engine.js" defer></script>
   <script src="download-engine.js" defer></script>
   <script src="signature-engine.js" defer></script>
+  <script src="provisioning-engine.js" defer></script>
   <script src="feature-flags.js" defer></script>
   <script src="app.js" defer></script>
 </body>
