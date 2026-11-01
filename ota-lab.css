@@ -1,0 +1,71 @@
+
+/* IPA Manager OTA laboratory — extends the shared visual language. */
+.ota-page{min-height:100vh}
+.ota-shell{max-width:920px;margin:0 auto;padding:48px 24px 72px}
+.ota-back{color:#8bc6ff;text-decoration:none;border:1px solid #263b52;padding:10px 13px;border-radius:10px;font-size:12px}
+.ota-back:hover{border-color:#579edc;background:#132238}
+.ota-heading{padding:8px 0 30px}
+.ota-heading .eyebrow{color:#77b7f2}
+.ota-heading h1{font-size:clamp(30px,5vw,48px);line-height:1.12;margin:12px 0 13px;letter-spacing:-1.5px}
+.ota-heading h1 em{font-style:normal;color:#79bdff}
+.ota-heading>p{color:#9caec5;max-width:680px;font-size:14px;line-height:1.7;margin:0}
+.ota-warning{display:flex;gap:13px;align-items:flex-start;padding:17px 19px;border:1px solid #614b2d;background:#282116;border-radius:14px;margin-bottom:23px}
+.ota-warning span{color:#e8b46b;font-weight:700;font-size:20px;line-height:1}
+.ota-warning p{font-size:12px;color:#cfbea6;margin:0;line-height:1.65}
+.ota-warning strong{color:#f0cea1}
+.ota-panel{border:1px solid #25344a;border-radius:17px;background:linear-gradient(135deg,#101a28,#0b131f);padding:25px;margin:18px 0;box-shadow:0 12px 40px #00000018}
+.ota-section-heading{display:flex;align-items:flex-start;gap:14px;margin-bottom:20px}
+.ota-step{display:grid;place-items:center;width:35px;height:35px;flex-shrink:0;color:#80c1ff;background:#18304a;border:1px solid #2d5279;border-radius:10px;font-size:12px;font-weight:700}
+.ota-section-heading h2,.ota-panel h2{margin:2px 0 6px;color:#e8f3ff;font-size:19px;letter-spacing:-.35px}
+.ota-section-heading p,.ota-panel>p,.ota-ready p{margin:0;color:#9aacc2;line-height:1.65;font-size:12px}
+.ota-panel label:not(.ota-consent){display:block;color:#cbdcef;margin:17px 0 7px;font-size:12px;font-weight:600}
+.ota-panel label small{color:#879bb2;font-size:10px;font-weight:400}
+.ota-panel input:not([type=checkbox]),.ota-panel textarea,.ota-panel select{display:block;width:100%;padding:12px 14px;background:#080f1b;border:1px solid #31455e;color:#e9f3ff;border-radius:10px;font-size:13px;outline:none;min-width:0}
+.ota-panel textarea{resize:vertical}
+.ota-panel select{min-height:44px}
+.ota-panel input:focus-visible,.ota-panel textarea:focus-visible,.ota-panel select:focus-visible{border-color:#65b0f0;box-shadow:0 0 0 3px #65b0f020}
+.ota-panel input::placeholder,.ota-panel textarea::placeholder{color:#62768b}
+.ota-grid-two{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:15px}
+.ota-panel button{margin-top:16px;min-height:40px;font-size:12px}
+.ota-panel button:disabled{opacity:.5;cursor:not-allowed}
+.ota-status{margin:12px 0 0;color:#93aec7;font-size:11px;line-height:1.6;overflow-wrap:anywhere}
+.ota-diagnostics{display:grid;gap:10px}
+.ota-check{display:flex;gap:13px;align-items:flex-start;padding:13px 14px;background:#0b1522;border:1px solid #253549;border-radius:11px}
+.ota-check-symbol{display:grid;place-items:center;width:25px;height:25px;flex:none;border-radius:50%;font-size:12px;font-weight:700;background:#20384c;color:#aed1ee}
+.ota-check.ok .ota-check-symbol{background:#153a32;color:#63e0b0}
+.ota-check.warn .ota-check-symbol{background:#42311e;color:#e3bd78}
+.ota-check b{display:block;color:#d7e9fb;font-size:12px}
+.ota-check small{display:block;margin-top:4px;line-height:1.5;color:#8ea2b8;font-size:11px}
+.ota-ready{border:1px solid #315475;background:#0c2031;border-radius:12px;padding:17px;margin-top:18px}
+.ota-ready.hidden{display:none}
+.ota-ready-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.ota-ready-head strong{font-size:13px}
+.ota-ready-head span{font-size:10px;color:#77b9f5}
+.ota-ready details{margin-top:16px}
+.ota-ready summary{font-size:12px;color:#a1cfff;cursor:pointer}
+.ota-ready pre{font-size:10px;color:#bbd2e7;max-height:320px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+.ota-consent{display:flex;gap:12px;align-items:flex-start;padding:13px 0;color:#b5c7da;font-size:11px;line-height:1.65;margin-top:12px;cursor:pointer}
+.ota-consent input{flex-shrink:0;width:17px;height:17px;margin:1px 0 0;accent-color:#6baff0}
+.ota-buttons{display:flex;gap:10px;flex-wrap:wrap}
+.ota-doc h2{margin-bottom:17px}
+.ota-doc a{display:inline-block;color:#8bc6ff;font-size:11px;margin-top:12px}
+.ota-doc>p{margin-top:15px}
+.ota-table-wrap{overflow-x:auto}
+.ota-table-wrap table{width:100%;border-collapse:collapse;min-width:525px;text-align:left}
+.ota-table-wrap th,.ota-table-wrap td{font-size:11px;padding:12px 10px;border-bottom:1px solid #29364a;vertical-align:top;line-height:1.6}
+.ota-table-wrap th{color:#aac4df;font-weight:600}
+.ota-table-wrap td{color:#93a8bd}
+.ota-table-wrap code,.ota-ready code{font-size:11px;background:#13263b;border-radius:5px;padding:2px 5px;color:#bde0ff}
+.ota-page .footer{max-width:1400px;margin:0 auto}
+@media(max-width:640px){
+  .ota-shell{padding:25px 14px 60px}
+  .ota-panel{padding:17px;margin:13px 0}
+  .ota-heading{padding-bottom:22px}
+  .ota-warning{padding:14px}
+  .ota-grid-two{grid-template-columns:1fr;gap:0}
+  .ota-page .topbar{padding:0 14px;gap:8px}
+  .ota-back{font-size:11px;padding:8px}
+  .ota-buttons{flex-direction:column;gap:0}
+  .ota-buttons button{width:100%}
+  .ota-section-heading h2{font-size:17px}
+}
