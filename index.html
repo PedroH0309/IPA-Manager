@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080b12">
+  <meta name="description" content="Gerenciador local de arquivos IPA: baixe, inspecione, extraia e verifique pacotes iOS com segurança.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="stylesheet" href="styles.css">
+  <title>IPA Manager</title>
+</head>
+<body>
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+  <header class="topbar">
+    <a class="brand" href="#home" aria-label="IPA Manager início">
+      <span class="brand-mark"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3.5 27 9.7v12.6L16 28.5 5 22.3V9.7L16 3.5Z"/><path d="M16 9v14M9.5 12.5l13 7M22.5 12.5l-13 7"/></svg></span>
+      <span><strong>IPA<span>MANAGER</span></strong><small>iOS package workspace</small></span>
+    </a>
+    <div class="top-actions"><span class="privacy-pill"><i></i> Processamento local</span><button class="icon-button" id="helpTop" aria-label="Ajuda" title="Ajuda">?</button></div>
+  </header>
+
+  <main class="shell">
+    <aside class="sidebar">
+      <div class="nav-label">WORKSPACE</div>
+      <button class="nav-item active" data-view="home"><span class="nav-icon">⌂</span> Visão geral</button>
+      <button class="nav-item" data-view="inspect"><span class="nav-icon">▤</span> Inspecionar IPA</button>
+      <button class="nav-item" data-view="catalog"><span class="nav-icon">◈</span> Catálogo</button>
+      <button class="nav-item" data-view="sources"><span class="nav-icon">◎</span> Fontes</button>
+      <button class="nav-item" data-view="library"><span class="nav-icon">▣</span> Biblioteca</button>
+      <div class="sidebar-bottom"><div class="side-note"><span class="shield">✓</span><div><b>Privacidade primeiro</b><small>Os arquivos selecionados são processados no navegador. Não enviamos IPA para nossos servidores.</small></div></div><span class="version">IPA Manager · Preview 0.1.0</span></div>
+    </aside>
+
+    <section class="content">
+      <section class="view active" id="view-home">
+        <div class="eyebrow">CENTRAL DE APLICATIVOS IOS</div>
+        <div class="hero-row"><div><h1>Seus pacotes.<br><em>Controle total.</em></h1><p class="hero-copy">Baixe, analise e organize arquivos IPA. A instalação segue os mecanismos de distribuição autorizados pelo iOS.</p></div><div class="hero-orbit" aria-hidden="true"><div class="orbit-ring"></div><div class="orbit-core">IPA</div><span class="orbit-node node-one">↓</span><span class="orbit-node node-two">✓</span><span class="orbit-node node-three">⌘</span></div></div>
+        <div class="action-grid">
+          <button class="action-card" id="homeImport"><span class="action-symbol blue">＋</span><b>Importar IPA</b><small>Escolha um arquivo no app Arquivos</small><span class="card-arrow">↗</span></button>
+          <button class="action-card" data-goto="catalog"><span class="action-symbol violet">◈</span><b>Explorar releases</b><small>Buscar pacotes em projetos GitHub</small><span class="card-arrow">↗</span></button>
+          <button class="action-card" data-goto="sources"><span class="action-symbol green">◎</span><b>Adicionar fonte</b><small>Importar um catálogo AltStore JSON</small><span class="card-arrow">↗</span></button>
+        </div>
+        <div class="section-heading"><div><span class="eyebrow">SEU AMBIENTE</span><h2>Resumo</h2></div><span class="local-tag"><i></i> Apenas neste dispositivo</span></div>
+        <div class="stats-grid"><div class="stat-card"><span>Pacotes analisados</span><b id="statInspected">0</b><small>Histórico local</small></div><div class="stat-card"><span>Fontes salvas</span><b id="statSources">0</b><small>Catálogos importados</small></div><div class="stat-card"><span>Verificações</span><b id="statChecks">0</b><small>Integridade SHA-256</small></div></div>
+        <div class="section-heading recent-heading"><div><span class="eyebrow">ATIVIDADE</span><h2>Recentes</h2></div><button class="text-button" data-goto="library">Abrir biblioteca →</button></div>
+        <div class="recent-list" id="recentList"><div class="empty-state compact"><span class="empty-icon">◌</span><div><b>Nenhuma atividade ainda</b><small>Importe um IPA ou adicione uma fonte para começar.</small></div></div></div>
+        <div class="notice info-notice"><span>ⓘ</span><p><b>Sobre a instalação no iPhone</b><br>Um site não pode assinar nem instalar qualquer IPA diretamente. O IPA Manager verifica e prepara o arquivo; a instalação depende de um canal autorizado ou de um instalador compatível já configurado.</p><button class="notice-close" aria-label="Fechar aviso">×</button></div>
+      </section>
+
+      <section class="view" id="view-inspect">
+        <div class="page-heading"><div><div class="eyebrow">ANÁLISE LOCAL</div><h1>Inspecionar IPA</h1><p>Leia a estrutura do pacote, os metadados e os indicadores de assinatura sem enviar o arquivo para a internet.</p></div><span class="page-icon">▤</span></div>
+        <div class="dropzone" id="dropzone"><input id="ipaFile" type="file" accept=".ipa,application/octet-stream,application/zip" hidden><div class="upload-icon">↑</div><b>Selecione um arquivo IPA</b><span>Toque para abrir o app Arquivos no iPhone</span><small>O arquivo permanece no seu dispositivo · Limite recomendado: 500 MB</small><button class="primary-button" id="chooseFile">Escolher arquivo</button></div>
+        <div class="file-panel hidden" id="filePanel">
+          <div class="file-header"><div class="file-app-icon">IPA</div><div class="file-main"><b id="fileName">arquivo.ipa</b><small id="fileSize">—</small></div><button id="removeFile" class="icon-button" title="Remover arquivo">×</button></div>
+          <div class="file-actions"><button class="secondary-button" id="saveIpa">Salvar IPA</button><button class="primary-button" id="shareIpa">Compartilhar IPA</button></div>
+          <div class="progress-track hidden" id="progressTrack"><div id="progressBar"></div></div><div class="status-line" id="fileStatus">Aguardando análise…</div>
+          <div class="metadata-grid" id="metadataGrid"></div>
+          <div class="section-heading inner-heading"><div><span class="eyebrow">CONTEÚDO DO PACOTE</span><h2>Estrutura</h2></div><span id="entryCount" class="count-pill">0 itens</span></div>
+          <div class="entry-tools"><input id="entrySearch" type="search" placeholder="Filtrar arquivos…"><select id="entryFilter" aria-label="Filtrar tipo"><option value="all">Todos os itens</option><option value="app">App bundle</option><option value="signature">Assinatura</option><option value="plist">Property lists</option><option value="framework">Frameworks</option></select></div>
+          <div class="entry-list" id="entryList"></div>
+          <div class="verify-row"><div><b>Integridade SHA-256</b><small>Calcule o hash completo do IPA e compare com um valor conhecido.</small></div><button class="secondary-button" id="hashButton">Calcular hash</button></div>
+          <div class="hash-result hidden" id="hashResult"><span>SHA-256</span><code id="hashValue"></code><button class="text-button" id="copyHash">Copiar</button></div>
+          <div class="signature-card" id="signatureCard"></div>
+        </div>
+        <div class="section-heading"><div><span class="eyebrow">RECURSOS</span><h2>O que a análise consegue confirmar</h2></div></div>
+        <div class="capability-grid"><div><span>01</span><b>Estrutura ZIP</b><small>Diretórios, caminhos, tamanhos e métodos de compressão.</small></div><div><span>02</span><b>Metadados</b><small>Bundle ID, versão, nome e versão mínima do iOS.</small></div><div><span>03</span><b>Indicadores</b><small>Presença de arquivos de assinatura e perfil de provisionamento.</small></div><div><span>04</span><b>Integridade</b><small>SHA-256 e CRC dos arquivos que forem lidos.</small></div></div>
+      </section>
+
+      <section class="view" id="view-catalog">
+        <div class="page-heading"><div><div class="eyebrow">REPOSITÓRIOS E RELEASES</div><h1>Catálogo</h1><p>Encontre versões publicadas por desenvolvedores e projetos. Confira a origem antes de baixar.</p></div><span class="page-icon">◈</span></div>
+        <div class="search-card"><label for="repoInput">Repositório GitHub</label><div class="search-line"><span class="github-mark">⌘</span><input id="repoInput" placeholder="ex.: NuvioMedia/NuvioMobile" autocomplete="off"><button class="primary-button" id="searchRepo">Buscar</button></div><div class="hint">Informe o formato proprietário/repositório. Não é necessário token para repositórios públicos.</div></div>
+        <div class="quick-projects"><span class="eyebrow">PROJETO EM DESTAQUE</span><button class="project-chip" data-repo="NuvioMedia/NuvioMobile"><span class="nuvio-dot">N</span><span><b>Nuvio Mobile</b><small>Releases oficiais</small></span><span>↗</span></button></div>
+        <div id="releaseResults" class="release-results"><div class="empty-state"><span class="empty-icon">⌕</span><b>Pesquise um repositório</b><small>As versões públicas e os ativos serão listados aqui.</small></div></div>
+      </section>
+
+      <section class="view" id="view-sources">
+        <div class="page-heading"><div><div class="eyebrow">CATÁLOGOS COMPATÍVEIS</div><h1>Fontes</h1><p>Adicione feeds no formato AltStore JSON para consultar apps e versões. A fonte não concede autorização de instalação.</p></div><span class="page-icon">◎</span></div>
+        <div class="search-card"><label for="sourceUrl">URL pública da fonte</label><div class="search-line"><span class="url-mark">↗</span><input id="sourceUrl" type="url" placeholder="https://exemplo.com/source.json" autocomplete="url"><button class="primary-button" id="addSource">Adicionar</button></div><div class="hint">Aceitamos fontes HTTPS no formato AltStore. Não insira senha, Apple ID ou token privado.</div></div>
+        <div class="source-feature"><div class="source-logo">N</div><div class="source-copy"><span class="eyebrow">FONTE OFICIAL</span><b>Nuvio Mobile</b><small>Feed mantido pelo projeto NuvioMedia no GitHub.</small><code>raw.githubusercontent.com/NuvioMedia/…/store.json</code></div><button class="secondary-button" id="addNuvio">Adicionar</button></div>
+        <div class="section-heading"><div><span class="eyebrow">SUAS FONTES</span><h2>Catálogos adicionados</h2></div><span class="count-pill" id="sourceCount">0 fontes</span></div>
+        <div id="sourcesList" class="source-list"><div class="empty-state compact"><span class="empty-icon">◎</span><div><b>Sem fontes adicionadas</b><small>Adicione um catálogo público para listar aplicativos.</small></div></div></div>
+      </section>
+
+      <section class="view" id="view-library">
+        <div class="page-heading"><div><div class="eyebrow">ARQUIVOS E HISTÓRICO</div><h1>Biblioteca</h1><p>Consulte os pacotes analisados e as fontes que você salvou neste dispositivo.</p></div><span class="page-icon">▣</span></div>
+        <div class="library-tabs"><button class="active" data-library-tab="packages">Pacotes</button><button data-library-tab="sources">Fontes salvas</button><button data-library-tab="activity">Atividade</button></div>
+        <div id="libraryContent"></div>
+        <div class="library-foot"><button class="text-button danger-text" id="clearHistory">Limpar histórico local</button><small>Isso apaga apenas os registros deste navegador.</small></div>
+      </section>
+
+      <section class="view" id="view-help">
+        <div class="page-heading"><div><div class="eyebrow">LIMITES E INSTALAÇÃO</div><h1>Central de ajuda</h1><p>O que funciona diretamente no iPhone, o que depende do iOS e como interpretar os resultados.</p></div><span class="page-icon">?</span></div>
+        <div class="help-section"><h2>O IPA Manager consegue instalar um IPA?</h2><p>Não diretamente. Um PWA não recebe as permissões de assinatura e instalação de apps do sistema. Ele pode baixar, inspecionar, extrair conteúdo e compartilhar o arquivo para um instalador compatível. A instalação continua sujeita à assinatura, ao provisionamento e às regras de distribuição da Apple.</p></div>
+        <div class="help-section"><h2>O que mudou no Brasil?</h2><p>A Apple passou a oferecer distribuição alternativa no Brasil com iOS 26.5. Marketplaces alternativos e distribuição pela web exigem autorização da Apple e apps autenticados/notarizados. Um catálogo JSON comum não é automaticamente um marketplace autorizado.</p><a class="external-link" href="https://developer.apple.com/support/app-distribution-in-brazil/" target="_blank" rel="noopener">Documentação para desenvolvedores da Apple ↗</a></div>
+        <div class="help-section"><h2>Como abrir um IPA em um instalador compatível?</h2><ol><li>Importe o arquivo no IPA Manager e confira origem, hash e metadados.</li><li>Use “Compartilhar arquivo” ou salve o IPA no app Arquivos.</li><li>Abra o menu de compartilhamento e selecione um instalador compatível, caso já esteja configurado.</li><li>Conclua a instalação dentro do próprio instalador e respeite os avisos de confiança e assinatura do iOS.</li></ol></div>
+        <div class="help-section"><h2>O que significa “assinatura detectada”?</h2><p>Significa apenas que foram encontrados arquivos associados a assinatura, como <code>_CodeSignature/CodeResources</code> ou <code>embedded.mobileprovision</code>. O IPA Manager não valida a cadeia criptográfica da assinatura, não verifica o estado do certificado nos servidores Apple e não garante que o iOS aceitará a instalação.</p></div>
+        <div class="help-section"><h2>Privacidade</h2><p>O IPA selecionado é processado localmente. As únicas operações de rede são as que você inicia para consultar repositórios, fontes e baixar arquivos. O aplicativo não solicita Apple ID, senha, certificado privado ou UDID do dispositivo.</p></div>
+      </section>
+    </section>
+  </main>
+
+  <nav class="mobile-nav" aria-label="Navegação principal"><button class="active" data-view="home"><span>⌂</span>Início</button><button data-view="inspect"><span>▤</span>Inspecionar</button><button data-view="catalog"><span>◈</span>Catálogo</button><button data-view="sources"><span>◎</span>Fontes</button><button data-view="library"><span>▣</span>Biblioteca</button></nav>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <dialog id="entryDialog" class="modal"><form method="dialog"><div class="modal-head"><div><span class="eyebrow">ARQUIVO DO IPA</span><h2 id="entryTitle">Detalhes do arquivo</h2></div><button class="icon-button" aria-label="Fechar">×</button></div><div id="entryDetails" class="modal-body"></div><div class="modal-actions"><button class="secondary-button" value="cancel">Fechar</button><button type="button" class="primary-button" id="downloadEntry">Exportar arquivo</button><button type="button" class="primary-button hidden" id="shareEntry">Compartilhar</button></div></form></dialog>
+  <footer class="footer"><span>IPA MANAGER</span><span>Feito para análise local e distribuição responsável.</span></footer>
+  <script src="app.js" defer></script>
+</body>
+</html>
