@@ -8,7 +8,7 @@ IPA Manager helps users understand the structure and metadata of an iOS applicat
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![PWA](https://img.shields.io/badge/PWA-Static%20Web%20App-6f42c1)
-![Status](https://img.shields.io/badge/status-preview%200.7.0-orange)
+![Status](https://img.shields.io/badge/status-preview%200.8.0-orange)
 ![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20modern%20browsers-lightgrey)
 
 ## Project status
@@ -28,7 +28,7 @@ The current codebase is a dependency-free static PWA built with HTML, CSS, and v
 | Remote IPA/ZIP downloads with progress and cancellation | Implemented in Preview 0.5.0 |
 | Executable CodeDirectory page-hash audit | Implemented in Preview 0.6.0; not Apple signature trust verification |
 | Provisioning metadata diagnostics and safe JSON export | Implemented in Preview 0.7.0; no Apple account needed |
-| OTA manifest research engine (generation and URL checks) | Module and tests implemented; not yet exposed as a public installation UI; does not bypass iOS signing |
+| OTA lab: manifest generation, on-iPhone installation request, diagnostic report | Experimental UI and automated tests in Preview 0.8.0; not an iOS signing bypass and no installation verified on device |
 | Web Workers and IndexedDB migration | Planned |
 | Native SwiftUI / WebKit shell | Planned |
 | MarketplaceKit / AppLibrary integration | Disabled; requires Apple authorization |
@@ -47,7 +47,7 @@ The current codebase is a dependency-free static PWA built with HTML, CSS, and v
 - **IPA rebuilding:** Rebuild a ZIP32 container from original entries and verify entry CRC-32 values.
 - **Integrity tools:** Calculate SHA-256 for supported files and compare against a trusted reference.
 - **Signature indicators:** Detect common signature-related files.
-- **OTA experiment (research):** `ota-engine.js` constructs an XML manifest for a separately hosted, already eligible IPA and builds an `itms-services` request from a hosted manifest URL. This is not a signing service, installer, or CoreTrust bypass. The module currently has automated tests but no end-user interface. A successful installation has not been demonstrated on a real iPhone.
+- **OTA experiment (research):** `ota-engine.js` constructs an XML manifest for a separately hosted, already eligible IPA and builds an `itms-services` request from a hosted manifest URL. This is not a signing service, installer, or CoreTrust bypass. The optional [OTA Lab](https://pedroh0309.github.io/IPA-Manager/ota-lab.html) offers an on-device UI to generate the plist, test whether a hosted manifest is readable by the browser, open an installation intent after user acknowledgement, and export a privacy-safe report. This does **not** verify Apple trust, sign an IPA, or confirm an installation. A successful installation has not been demonstrated on a real iPhone.
 - **Provisioning diagnostics:** Locally extract an XML plist payload from the main bundle's `embedded.mobileprovision` (when present), display declared expiry, probable profile category, bundle identifier compatibility, and device-list counts without exposing UDIDs or certificate payloads. Export a sanitized JSON report. A CMS payload is **not** cryptographically verified.
 - **Executable integrity audit:** Inspect the primary Mach-O CodeDirectory and compare SHA-256/SHA-384 page hashes using Web Crypto. Detect modified code pages, unsigned executables, a CMS blob indicator and the CDHash fingerprint. It does not authenticate the CMS blob, Apple certificates, resource seal, provisioning profile, nested frameworks, or iOS installability.
 - **GitHub releases:** Browse public repository releases and IPA/ZIP assets.
@@ -71,6 +71,10 @@ The current codebase is a dependency-free static PWA built with HTML, CSS, and v
 | License delivery | Not implemented | Apple App License Delivery SDK on Swift server |
 
 The current static application has no paid API dependencies, package installation step, or backend requirement. Remote in-app downloads depend on the remote host allowing cross-origin reads (CORS); when it does not, the app exposes the host's direct download link instead.
+
+## OTA experiment and real-device verification
+
+Open the [OTA lab on iPhone Safari](https://pedroh0309.github.io/IPA-Manager/ota-lab.html) to generate an XML manifest for an already authorized, properly signed IPA, use a separately hosted HTTPS manifest, and request iOS installation via the native OTA scheme. The system may reject the app. The browser cannot determine whether the installation succeeded. **This is not a way to distribute arbitrary IPA files to the public.** See [the OTA testing and blocker matrix](docs/OTA_LAB.md).
 
 ## Requirements
 
