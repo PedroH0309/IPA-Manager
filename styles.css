@@ -55,3 +55,37 @@
 .install-footnote b{color:#b8cee4}
 .install-footnote strong{color:#c5d8ea}
 @media(max-width:650px){.install-assist{padding:13px}.install-assist-heading{align-items:flex-start;flex-direction:column}.install-state{white-space:normal}.install-option>button{width:100%}.installer-links{flex-direction:column;gap:8px}}
+
+
+/* Remote download manager */
+.download-panel {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(84, 169, 255, .28);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(20, 43, 68, .9), rgba(12, 22, 36, .92));
+}
+.download-panel.hidden { display: none; }
+.download-panel-head,
+.download-panel-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.download-panel-head > div { display: grid; gap: 4px; min-width: 0; }
+.download-panel-head strong { color: #e7f2ff; font-size: 13px; }
+.download-panel-head small,
+.download-panel-foot small { color: #91a7bd; font-size: 11px; overflow-wrap: anywhere; }
+.download-panel progress { width: 100%; height: 7px; accent-color: #54a9ff; }
+.download-panel-foot a { color: #82c2ff; text-decoration: none; font-size: 11px; }
+.asset-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.asset-actions a { color: #82c2ff; font-size: 10px; text-decoration: none; white-space: nowrap; }
+.asset-actions .secondary-button { white-space: nowrap; }
+@media (max-width: 640px) {
+  .download-panel { padding: 12px; }
+  .asset-actions { width: 100%; }
+  .asset-actions .secondary-button { min-height: 36px; }
+}
