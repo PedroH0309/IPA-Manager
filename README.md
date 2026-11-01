@@ -8,7 +8,7 @@ IPA Manager helps users understand the structure and metadata of an iOS applicat
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![PWA](https://img.shields.io/badge/PWA-Static%20Web%20App-6f42c1)
-![Status](https://img.shields.io/badge/status-preview%200.6.0-orange)
+![Status](https://img.shields.io/badge/status-preview%200.7.0-orange)
 ![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20modern%20browsers-lightgrey)
 
 ## Project status
@@ -27,6 +27,7 @@ The current codebase is a dependency-free static PWA built with HTML, CSS, and v
 | Bounded ZIP decompression and structural checks | Implemented in Preview 0.4.0 |
 | Remote IPA/ZIP downloads with progress and cancellation | Implemented in Preview 0.5.0 |
 | Executable CodeDirectory page-hash audit | Implemented in Preview 0.6.0; not Apple signature trust verification |
+| Provisioning metadata diagnostics and safe JSON export | Implemented in Preview 0.7.0; no Apple account needed |
 | Web Workers and IndexedDB migration | Planned |
 | Native SwiftUI / WebKit shell | Planned |
 | MarketplaceKit / AppLibrary integration | Disabled; requires Apple authorization |
@@ -45,6 +46,7 @@ The current codebase is a dependency-free static PWA built with HTML, CSS, and v
 - **IPA rebuilding:** Rebuild a ZIP32 container from original entries and verify entry CRC-32 values.
 - **Integrity tools:** Calculate SHA-256 for supported files and compare against a trusted reference.
 - **Signature indicators:** Detect common signature-related files.
+- **Provisioning diagnostics:** Locally extract an XML plist payload from the main bundle's `embedded.mobileprovision` (when present), display declared expiry, probable profile category, bundle identifier compatibility, and device-list counts without exposing UDIDs or certificate payloads. Export a sanitized JSON report. A CMS payload is **not** cryptographically verified.
 - **Executable integrity audit:** Inspect the primary Mach-O CodeDirectory and compare SHA-256/SHA-384 page hashes using Web Crypto. Detect modified code pages, unsigned executables, a CMS blob indicator and the CDHash fingerprint. It does not authenticate the CMS blob, Apple certificates, resource seal, provisioning profile, nested frameworks, or iOS installability.
 - **GitHub releases:** Browse public repository releases and IPA/ZIP assets.
 - **AltStore catalog import:** Read public AltStore-compatible JSON sources over HTTPS.
@@ -164,6 +166,14 @@ Open **Inspect IPA**, import a package, and select **Verify executable integrity
 
 A match does **not** establish signer identity, certificate validity, profile eligibility, notarization, resource-seal integrity, nested-code integrity, or installation authorization. A CMS blob's presence is only reported, not verified. This parser is a bounded diagnostic implementation and is not Apple's code-signing verification API. Apple's signed formats may change. See [Apple TN3126](https://developer.apple.com/documentation/technotes/tn3126-inside-code-signing-hashes).
 
+## Provisioning profile diagnostics (Preview 0.7.0)
+
+Open **Inspect IPA** and select **Analisar perfil de provisionamento**. If the main bundle contains `embedded.mobileprovision`, the browser reads a bounded plist payload and checks metadata including expiry and whether the declared application identifier matches the IPA Bundle ID. You can export a sanitized JSON report to aid troubleshooting. The app does not ask for a UDID or store certificate/private key material.
+
+**Important:** The embedded plist is extracted without authenticating its CMS signature. All metadata can be forged. A matching profile, a future expiration date, or an apparent Ad Hoc/development category **does not prove that iOS will accept the package**. Device enrollment, App ID entitlements, CMS signatures, Apple certificate trust, nested code signatures, revoked credentials and current distribution eligibility are not verified. Missing profiles may be normal for certain distribution formats; absence is not proof of an unsigned app.
+
+Without Apple Developer Program access or an existing authorized distribution channel, this module cannot enable arbitrary IPA installation.
+
 ## Security boundaries
 
 - Selected IPA files are processed locally during inspection and export.
@@ -184,6 +194,7 @@ A match does **not** establish signer identity, certificate validity, profile el
 - Export/rebuild uses a ZIP32 writer with STORE compression and a 400 MiB aggregate output budget.
 - The writer does not preserve arbitrary ZIP extra fields, archive comments, or original compression methods.
 - SHA-256 is limited to 300 MiB in the current interface.
+- The provisioning diagnostic supports XML payloads embedded in profiles up to 4 MiB, and it does not validate CMS, profile authenticity, or iPhone device enrollment.
 - The experimental Mach-O CodeDirectory audit is limited to 64 MiB of extracted executable data and 8192 code pages; alternate CodeDirectories, nested libraries, special hash slots, CMS cryptography and Apple trust decisions are not verified.
 - Binary plist support covers common scalar, array, and dictionary types; it is not a complete Apple forensic plist implementation.
 - Signature indicators and CodeDirectory page-hash checks are not CMS/certificate-chain verification. A matching CodeDirectory is not proof that Apple will trust or install an app.
@@ -205,10 +216,12 @@ A match does **not** establish signer identity, certificate validity, profile el
 ├── tests/
 │   ├── zip-engine.test.cjs
 │   ├── download-engine.test.cjs
-│   └── signature-engine.test.cjs
+│   ├── signature-engine.test.cjs
+│   └── provisioning-engine.test.cjs
 ├── app.js
 ├── zip-engine.js
 ├── signature-engine.js
+├── provisioning-engine.js
 ├── download-engine.js
 ├── feature-flags.js
 ├── index.html
