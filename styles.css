@@ -100,3 +100,20 @@
 .download-panel { scroll-margin-top:20px; }
 .asset-actions > a.primary-button { color:#e7f2ff; }
 @media (max-width:640px) { .direct-download-link { min-height:38px; } .asset-actions > button { white-space:normal; } }
+
+/* Executable CodeDirectory audit */
+.signature-audit { display: grid; gap: 12px; }
+.signature-audit.hidden { display: none; }
+.signature-audit-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; }
+.signature-audit-heading > div { display:grid; gap:4px; }
+.signature-audit-heading strong { font-size:13px; color:#e7f2ff; }
+.signature-audit-heading small { color:#91a7bd; font-size:11px; }
+.signature-audit-status { color:#d1e4fa; line-height:1.6; font-size:12px; margin:0; }
+.signature-disclaimer { color:#92a6bc; line-height:1.6; font-size:11px; margin:4px 0 0; }
+.signature-hash { word-break:break-all; font-family:monospace; font-size:10px; }
+#signatureAuditResults { display:grid; gap:6px; }
+@media(max-width:600px) {
+  .signature-audit-heading button { width:100%; }
+  .signature-audit .detail-line { gap:12px; flex-wrap:wrap; }
+  .signature-audit .detail-line b { overflow-wrap:anywhere; }
+}
