@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   validate:
-    name: Static validation
+    name: Static validation and ZIP engine tests
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -22,7 +22,12 @@ jobs:
         with:
           node-version: 22
       - name: Check JavaScript syntax
-        run: node --check app.js
+        run: |
+          node --check app.js
+          node --check zip-engine.js
+          node --check feature-flags.js
+      - name: Run ZIP engine tests
+        run: node --test tests/*.test.cjs
       - name: Validate PWA manifest
         run: python -m json.tool manifest.webmanifest > /dev/null
       - name: Check required project files
@@ -30,5 +35,9 @@ jobs:
           test -f index.html
           test -f styles.css
           test -f sw.js
+          test -f zip-engine.js
+          test -f feature-flags.js
           test -f LICENSE
           test -f README.md
+          test -f docs/ARCHITECTURE.md
+          test -f docs/APPLE_DISTRIBUTION.md

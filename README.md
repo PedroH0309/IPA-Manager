@@ -1,72 +1,80 @@
 # IPA Manager
 
-**A local-first Progressive Web App for inspecting, exporting, rebuilding, and handing off iOS IPA packages.**
+**A local-first Progressive Web App for inspecting, validating, extracting, rebuilding, and exporting iOS IPA packages.**
 
-IPA Manager helps iPhone and desktop users understand what is inside an **.ipa** file before passing the original package to a compatible iOS installer. Archive inspection, metadata parsing, integrity checks, and ZIP export run in the browser; the selected IPA is not uploaded by the inspection workflow.
+IPA Manager helps users understand the structure and metadata of an iOS application package before deciding what to do with it. Inspection and archive processing run locally in the browser; the selected IPA is not uploaded by the local inspection workflow.
+
+![IPA Manager preview](assets/preview.svg)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![PWA](https://img.shields.io/badge/Progressive%20Web%20App-PWA-6f42c1)
-![Status](https://img.shields.io/badge/status-preview%200.3.0-orange)
+![PWA](https://img.shields.io/badge/PWA-Static%20Web%20App-6f42c1)
+![Status](https://img.shields.io/badge/status-preview%200.4.0-orange)
 ![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20modern%20browsers-lightgrey)
 
-## Preview
+## Project status
 
-![IPA Manager interface preview](assets/preview.svg)
+The current codebase is a dependency-free static PWA built with HTML, CSS, and vanilla JavaScript. The architecture is intentionally being stabilized in place before introducing React, a backend, or a native iOS target.
 
-*Illustrative interface preview of the current dark UI. The repository's live interface is the source of truth for current behavior.*
-
-## Why IPA Manager?
-
-An IPA is a ZIP-based application package, but opening or extracting it does not prove that iOS will accept it. Users often need to inspect application metadata, confirm the archive layout, export a bundle for analysis, or hand the original package to a separate signing and installation tool.
-
-IPA Manager brings those local inspection and packaging tasks together in a browser-based interface. It does **not** bypass Apple's signing, provisioning, notarization, or installation requirements.
+| Capability | Status |
+|---|---|
+| Local IPA import and ZIP directory parsing | Implemented |
+| XML and binary Info.plist parsing | Implemented |
+| Metadata and archive explorer | Implemented |
+| CRC-32 and SHA-256 integrity tools | Implemented |
+| App bundle ZIP export | Implemented |
+| IPA container rebuilding | Implemented |
+| GitHub releases and AltStore JSON catalog import | Implemented |
+| Bounded ZIP decompression and structural checks | Implemented in Preview 0.4.0 |
+| Web Workers and IndexedDB migration | Planned |
+| Native SwiftUI / WebKit shell | Planned |
+| MarketplaceKit / AppLibrary integration | Disabled; requires Apple authorization |
+| App License Delivery service | Not implemented; requires Swift server and Apple assets |
 
 ## Features
 
-- **Local IPA import:** Select an .ipa file from the browser's native file picker.
-- **ZIP inspection:** Read STORE and Deflate archive entries without uploading the selected package.
-- **Property lists:** Parse Payload/*.app/Info.plist in XML and binary plist formats.
-- **Application metadata:** Display the bundle identifier, version, build number, app name, minimum iOS version, and archive structure.
-- **App bundle export:** Export the complete Payload/<App>.app/ hierarchy as a ZIP that can be decompressed in the iOS Files app.
-- **IPA rebuild:** Rebuild a ZIP-based IPA container from the original entries, with CRC-32 checks and preservation of available timestamps and Unix external attributes.
-- **File sharing:** Share the original IPA, rebuilt IPA, exported bundle, or individual entries through the Web Share API when supported.
-- **Integrity checks:** Verify an entry's CRC-32 when it is read and calculate a SHA-256 hash for supported file sizes.
-- **Signature indicators:** Detect common signature-related files such as CodeResources and embedded.mobileprovision.
-- **GitHub releases:** Browse public repository releases and their IPA/ZIP assets.
-- **AltStore-compatible sources:** Import public JSON catalogs over HTTPS.
-- **SideStore hand-off:** Open direct HTTPS IPA links from GitHub releases and imported catalogs through SideStore's documented URL scheme.
-- **Assisted installation:** Share a locally selected original IPA, or hand an already-hosted OTA manifest to iOS.
-- **Local history:** Store inspection metadata and activity in browser localStorage.
-- **Offline app shell:** Cache the interface with a service worker after the first successful visit.
+- **Local import:** Select IPA files through the browser's file picker.
+- **ZIP parser:** Read STORE and Deflate entries using the ZIP central directory.
+- **Bounded decompression:** Enforce per-entry and total expansion limits while streaming decompressed data.
+- **Path validation:** Reject absolute paths, traversal segments, backslash paths, duplicate paths, and unsupported encryption.
+- **Plist inspection:** Parse XML and binary property lists from Payload/*.app/Info.plist.
+- **Application metadata:** Display app name, bundle identifier, version, build number, minimum iOS version, and archive structure.
+- **App bundle export:** Create a ZIP containing the complete application bundle directory.
+- **IPA rebuilding:** Rebuild a ZIP32 container from original entries and verify entry CRC-32 values.
+- **Integrity tools:** Calculate SHA-256 for supported files and compare against a trusted reference.
+- **Signature indicators:** Detect common signature-related files without claiming cryptographic validation.
+- **GitHub releases:** Browse public repository releases and IPA/ZIP assets.
+- **AltStore catalog import:** Read public AltStore-compatible JSON sources over HTTPS.
+- **Local history:** Save operation metadata in browser storage.
+- **Offline shell:** Cache the PWA interface through a service worker.
 
 ## Technology stack
 
-| Area | Technology |
-|---|---|
-| Interface | HTML5, CSS3, vanilla JavaScript |
-| Application model | Progressive Web App (PWA) |
-| Archive reading | ZIP central-directory parsing, STORE, Deflate |
-| Archive writing | Browser Blob and ZIP32 writer |
-| Metadata | XML plist parsing, binary plist decoder |
-| Integrity | CRC-32 and Web Crypto API (crypto.subtle) |
-| File handling | File, Blob, URL and Web Share APIs |
-| Offline support | Service Worker and Web App Manifest |
-| Release/catalog data | GitHub REST API and AltStore-compatible JSON over HTTPS |
-| Hosting | Any static HTTPS host (GitHub Pages, Cloudflare Pages, etc.) |
+| Layer | Current implementation | Planned evolution |
+|---|---|---|
+| Web interface | HTML5, CSS3, vanilla JavaScript | React, TypeScript, Vite, Tailwind CSS |
+| IPA engine | Dedicated JavaScript ZIP engine | Web Workers and typed engine interfaces |
+| Local data | localStorage | IndexedDB |
+| Offline support | Service Worker, Web App Manifest | Retain PWA shell |
+| Native iOS | Not started | Swift, SwiftUI, WebKit |
+| Apple distribution | Disabled | MarketplaceKit, AppLibrary, ActionButton |
+| API | None | Node.js, NestJS |
+| Data | Browser-local metadata | PostgreSQL, Redis |
+| File storage | Local Blob/File APIs | S3-compatible object storage and CDN |
+| License delivery | Not implemented | Apple App License Delivery SDK on Swift server |
 
-No package manager, build step, backend, or paid API key is required for the current static version.
+The current static application has no paid API dependencies, package installation step, or backend requirement.
 
 ## Requirements
 
-- A modern browser with File, Blob, DOMParser, DecompressionStream('deflate-raw'), and crypto.subtle.
-- HTTPS for PWA installation, service workers, Web Crypto, and secure browser APIs. localhost is also suitable for local development.
-- On iPhone, a recent version of Safari and access to the iOS Files app for selecting and saving packages.
+- A modern browser supporting Blob, File, DOMParser, DecompressionStream('deflate-raw'), and crypto.subtle.
+- HTTPS for PWA installation, service workers, and secure browser APIs. localhost is supported for development.
+- On iPhone, a recent Safari version and the iOS Files app for selecting and saving packages.
 
-Safari support for DecompressionStream('deflate-raw') is available on iOS 16.4 and later. Actual memory limits depend on the device and the size and structure of the archive.
+The ZIP engine currently limits a single read to 250 MiB and the declared total uncompressed archive size to 2 GiB. The export writer has its own lower memory budget.
 
 ## Run locally
 
-There is no build system or dependency installation step.
+No npm dependencies or build step are required for the current PWA.
 
 1. Clone the repository:
 
@@ -75,90 +83,92 @@ There is no build system or dependency installation step.
    cd IPA-Manager
    ~~~
 
-2. Start a local static server with Python:
+2. Start a static server:
 
    ~~~bash
    python -m http.server 8000
    ~~~
 
-3. Open http://localhost:8000 in a modern browser.
+3. Open http://localhost:8000.
 
-Alternatively, serve the directory with any static HTTP server. Do not open the HTML file directly with file:// when testing PWA or service-worker behavior.
+Do not use file:// when testing service workers or secure browser APIs.
+
+## Run tests
+
+The ZIP engine has isolated Node.js tests and does not require a browser DOM.
+
+~~~bash
+node --test tests/*.test.cjs
+node --check app.js
+python -m json.tool manifest.webmanifest
+~~~
+
+GitHub Actions runs these checks for pushes to main and pull requests.
 
 ## Deploy with GitHub Pages
 
-1. Push the project files to the main branch.
-2. Open **Settings → Pages** in the repository.
-3. Under **Build and deployment**, select **Deploy from a branch**.
-4. Choose main and /(root), then save.
-5. Open the HTTPS URL generated by GitHub Pages.
-6. On iPhone, open the site in Safari, tap **Share → Add to Home Screen**, enable **Open as Web App**, and tap **Add**.
+1. Push the project files to main.
+2. Open **Settings → Pages**.
+3. Select **Deploy from a branch**, then main and /(root).
+4. Open the resulting HTTPS URL in Safari.
+5. On iPhone, use **Share → Add to Home Screen** and enable **Open as Web App**.
 
-Keep manifest.webmanifest, sw.js, and the application icons in the deployed directory.
+Keep manifest.webmanifest, sw.js, zip-engine.js, feature-flags.js, and the icon files in the deployment root.
 
-## How to use
+## Workflow
 
-### Inspect an IPA
+1. Import an original .ipa.
+2. Review metadata and the archive tree.
+3. Inspect individual files or calculate SHA-256.
+4. Export the .app bundle as a ZIP, or rebuild the original IPA container.
+5. Save or share the output file through the browser.
 
-1. Open **Inspecionar IPA**.
-2. Select the original .ipa file using the file picker.
-3. Review the application metadata, archive entries, and signature indicators.
-4. Calculate the SHA-256 hash when needed and compare it with a trusted reference published by the developer.
+The .app folder inside an exported ZIP is not directly installable from the iOS Files app. Rebuilding a ZIP container does not repair or sign the application.
 
-### Export the app bundle
+## Managed installation: intentionally disabled
 
-1. Import the IPA and wait for inspection to finish.
-2. Select **Extrair aplicativo (.app)**.
-3. Save or share the generated ZIP.
-4. In the iOS Files app, decompress the ZIP to view the <App>.app/ folder.
+IPA Manager does not currently install apps or forward installation requests to third-party sideloading tools. The managed installation controls remain disabled until the project has all of the following:
 
-The .app directory is an extracted bundle, **not an installable file in the Files app**.
+- A dedicated native iOS marketplace application.
+- Apple's com.apple.developer.marketplace.app-installation entitlement and authorization for Brazil.
+- A compliant marketplace website and backend.
+- A license service implemented with Apple's App License Delivery SDK.
+- Authenticated/notarized app packages and valid developer distribution relationships.
+- Moderation, fraud prevention, privacy, intellectual-property, takedown, and support processes.
 
-### Rebuild an IPA
+The current feature flags in feature-flags.js are all false. Changing a JavaScript flag does not grant an Apple entitlement or enable installation.
 
-1. Import the original IPA.
-2. Select **Reconstruir IPA**.
-3. Save or share the generated .ipa file.
+Official Apple documentation:
+- [Operating an alternative app marketplace in Brazil](https://developer.apple.com/br/support/alternative-app-marketplace-br/)
+- [MarketplaceKit](https://developer.apple.com/documentation/marketplacekit)
+- [Installing apps from an alternative marketplace](https://developer.apple.com/documentation/marketplacekit/installing-apps-from-an-alternative-app-marketplace)
+- [AppLibrary](https://developer.apple.com/documentation/marketplacekit/applibrary)
+- [App License Delivery SDK](https://developer.apple.com/documentation/AppLicenseDeliverySDK)
 
-Rebuilding recreates the archive container. It does not sign, re-sign, repair, or provision the app. Keep the original IPA available; use the rebuilt package only when you specifically need a reconstructed archive.
+Apple currently requires Brazil marketplace operators to enroll in the Apple Developer Program as an organization and satisfy additional eligibility and ongoing operational requirements. See Apple's current Brazil requirements before pursuing entitlement approval.
 
-### Hand off an IPA to an installer
+## Security boundaries
 
-- **Local IPA:** use **Enviar IPA ao instalador** to open the iOS share sheet. If the installer is not listed, save the original file in Files and import it from inside the installer.
-- **Remote IPA:** for supported GitHub release assets or AltStore-source download URLs, use **Instalar via SideStore**. This opens SideStore's documented sidestore://install?url=... URL scheme. SideStore must already be installed and configured.
-- **OTA manifest:** the manifest field can open an itms-services:// request for a public HTTPS manifest.plist. The manifest and referenced IPA must already be hosted and signed/provisioned for a distribution method accepted by iOS. This is not a personal free-signing service.
+- Selected IPA files are processed locally during inspection and export.
+- Remote catalog and release lookups are explicit network operations.
+- Archive paths are validated before extraction/rebuilding.
+- Decompression output is bounded before being accumulated in memory.
+- The app does not request Apple Account passwords, private certificates, UDIDs, or provisioning profiles.
+- The presence of CodeResources or embedded.mobileprovision is only an indicator. It does not verify CMS signatures, CodeDirectory hashes, certificate revocation, notarization, or Apple's online trust.
+- ZIP parsing is not a malware scanner or a guarantee that an app is safe to install.
 
-Useful installer documentation:
-- [SideStore URL schema](https://docs.sidestore.io/docs/advanced/url-schema)
-- [SideStore prerequisites](https://docs.sidestore.io/docs/installation/prerequisites)
-- [SideStore installation](https://docs.sidestore.io/docs/installation/install)
-- [AltStore Classic / AltServer](https://faq.altstore.io/altstore-classic/altserver)
-- [Apple: app distribution in Brazil](https://developer.apple.com/support/app-distribution-in-brazil/)
+## Known limitations
 
-## Important platform and security boundaries
-
-IPA Manager is a website/PWA, not an iOS signing service. Public browser APIs do not allow it to install arbitrary IPA files, bypass iOS trust checks, create a signing certificate, or make an unsigned app installable.
-
-- The app does not ask for an Apple Account password, device UDID, private signing certificate, or personal provisioning profile.
-- The selected IPA is processed locally during inspection and export. Network activity is initiated for release/catalog lookups, remote downloads, or user-requested hand-offs.
-- An imported AltStore-compatible JSON catalog is only a list of metadata and download URLs. It is not automatically an Apple-authorized marketplace.
-- SideStore and AltStore Classic are separate installer applications. They are responsible for their own signing and installation workflow and remain subject to Apple's account, provisioning, entitlement, and platform limits.
-- In Brazil, alternative marketplaces and web distribution require Apple's authorization and notarized apps. A PWA cannot become an authorized marketplace merely by importing a JSON source.
-- The presence of CodeResources or embedded.mobileprovision is only an indicator. It is not cryptographic proof that the IPA is signed correctly or can be installed.
-
-## Known limitations (Preview 0.3.0)
-
-- ZIP64, multi-volume ZIP archives, and encrypted ZIP entries are not supported.
-- IPA inspection is blocked for packages larger than 700 MB.
-- Individual entry extraction is limited to 250 MB.
-- App bundle export and IPA rebuilding are limited to 400 MB of total uncompressed data to reduce memory pressure on mobile devices.
-- The archive writer creates ZIP32 files using STORE compression; rebuilt IPAs may be larger than their originals.
-- The writer preserves available timestamps and Unix external attributes, but does not preserve arbitrary ZIP extra fields, archive comments, or the source compression method.
-- Duplicate paths and unsafe paths (absolute paths, parent-directory traversal, and backslash paths) are rejected during export.
-- SHA-256 calculation is limited to files up to 300 MB.
-- The interface displays up to 700 archive entries at a time; search can refine the complete entry collection.
-- Local history stores metadata, not IPA binaries. The service worker caches interface resources only.
-- Signature detection is not a substitute for CMS/CodeDirectory verification, certificate revocation checks, notarization checks, or Apple's online validation.
+- ZIP64, multi-volume ZIP archives, and encrypted entries are unsupported.
+- The application import limit is 700 MiB.
+- Single-entry reads are limited to 250 MiB.
+- Declared total uncompressed size is limited to 2 GiB.
+- Export/rebuild uses a ZIP32 writer with STORE compression and a 400 MiB aggregate output budget.
+- The writer does not preserve arbitrary ZIP extra fields, archive comments, or original compression methods.
+- SHA-256 is limited to 300 MiB in the current interface.
+- Binary plist support covers common scalar, array, and dictionary types; it is not a complete Apple forensic plist implementation.
+- Signature indicators are not cryptographic signature verification.
+- The PWA does not enumerate installed iOS apps or update them.
 
 ## Project structure
 
@@ -166,39 +176,36 @@ IPA Manager is a website/PWA, not an iOS signing service. Public browser APIs do
 .
 ├── .github/
 │   ├── ISSUE_TEMPLATE/
-│   │   ├── bug_report.yml
-│   │   └── feature_request.yml
 │   ├── workflows/
-│   │   └── validate.yml
 │   └── PULL_REQUEST_TEMPLATE.md
 ├── assets/
 │   └── preview.svg
+├── docs/
+│   ├── APPLE_DISTRIBUTION.md
+│   └── ARCHITECTURE.md
+├── tests/
+│   └── zip-engine.test.cjs
 ├── app.js
+├── zip-engine.js
+├── feature-flags.js
 ├── index.html
 ├── styles.css
 ├── sw.js
 ├── manifest.webmanifest
-├── icon.svg
-├── icon-180.png
-├── icon-192.png
-├── icon-512.png
 ├── LICENSE
-├── CODE_OF_CONDUCT.md
 ├── CONTRIBUTING.md
-├── SECURITY.md
-└── README.md
+├── CODE_OF_CONDUCT.md
+└── SECURITY.md
 ~~~
 
 ## Contributing
 
-Issues and pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a change and follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+Read CONTRIBUTING.md before submitting changes. Use the issue and pull request templates. Never attach private IPA files, Apple credentials, provisioning profiles, or certificates to a public issue.
 
-For bugs, include browser and OS versions, reproduction steps, the expected result, and the actual result. Do not attach private IPA files, Apple credentials, provisioning profiles, or other sensitive material to public issues.
+## Security reports
 
-## Security
-
-Please do not report security vulnerabilities in public issues. Read [SECURITY.md](SECURITY.md) for the responsible disclosure process.
+See SECURITY.md for responsible disclosure instructions.
 
 ## License
 
-This project is released under the [MIT License](LICENSE).
+MIT. See LICENSE.

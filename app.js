@@ -65,105 +65,7 @@ $('#helpTop').addEventListener('click', () => navigate('help'));
 $('.notice-close')?.addEventListener('click', () => $('.notice')?.remove());
 
 // ZIP central-directory reader: supports stored (0) and Deflate (8), rejects encryption and Zip64.
-const ZIP = {
-  eocd: 0x06054b50, central: 0x02014b50, local: 0x04034b50,
-  async directory(file) {
-    if (!(file instanceof Blob)) throw new Error('Arquivo inválido.');
-    const tailSize = Math.min(file.size, 22 + 65535 + 20);
-    const tail = new Uint8Array(await file.slice(file.size - tailSize).arrayBuffer());
-    const view = new DataView(tail.buffer, tail.byteOffset, tail.byteLength);
-    let eocd = -1;
-    for (let i = tail.length - 22; i >= 0; i--) {
-      if (view.getUint32(i, true) === this.eocd) {
-        const commentLength = view.getUint16(i + 20, true);
-        if (i + 22 + commentLength <= tail.length) { eocd = i; break; }
-      }
-    }
-    if (eocd < 0) throw new Error('Estrutura ZIP inválida: registro final não encontrado.');
-    const disk = view.getUint16(eocd + 4, true);
-    const centralDisk = view.getUint16(eocd + 6, true);
-    const diskCount = view.getUint16(eocd + 8, true);
-    const count = view.getUint16(eocd + 10, true);
-    const cdSize = view.getUint32(eocd + 12, true);
-    const cdOffset = view.getUint32(eocd + 16, true);
-    if (disk || centralDisk || diskCount !== count) throw new Error('Arquivo ZIP dividido em múltiplos volumes não é suportado.');
-    if (count === 0xffff || cdSize === 0xffffffff || cdOffset === 0xffffffff) throw new Error('Este IPA usa ZIP64, ainda não suportado por esta versão.');
-    if (cdOffset + cdSize > file.size) throw new Error('Índice ZIP aponta para fora do arquivo.');
-    if (cdSize > 128 * 1024 * 1024 || count > 120000) throw new Error('Índice ZIP excessivamente grande. A análise foi interrompida por segurança.');
-    const central = new Uint8Array(await file.slice(cdOffset, cdOffset + cdSize).arrayBuffer());
-    const cv = new DataView(central.buffer, central.byteOffset, central.byteLength);
-    const entries = []; let offset = 0;
-    const decoder = new TextDecoder('utf-8');
-    for (let index = 0; index < count; index++) {
-      if (offset + 46 > central.length || cv.getUint32(offset, true) !== this.central) throw new Error(`Índice ZIP corrompido na entrada ${index + 1}.`);
-      const versionMadeBy = cv.getUint16(offset + 4, true);
-      const versionNeeded = cv.getUint16(offset + 6, true);
-      const flags = cv.getUint16(offset + 8, true);
-      const method = cv.getUint16(offset + 10, true);
-      const modTime = cv.getUint16(offset + 12, true);
-      const modDate = cv.getUint16(offset + 14, true);
-      const crc = cv.getUint32(offset + 16, true);
-      const compressedSize = cv.getUint32(offset + 20, true);
-      const size = cv.getUint32(offset + 24, true);
-      const nameLength = cv.getUint16(offset + 28, true);
-      const extraLength = cv.getUint16(offset + 30, true);
-      const commentLength = cv.getUint16(offset + 32, true);
-      const diskStart = cv.getUint16(offset + 34, true);
-      const internalAttrs = cv.getUint16(offset + 36, true);
-      const externalAttrs = cv.getUint32(offset + 38, true);
-      const localOffset = cv.getUint32(offset + 42, true);
-      const end = offset + 46 + nameLength + extraLength + commentLength;
-      if (end > central.length) throw new Error('Metadados de uma entrada ZIP estão truncados.');
-      if (compressedSize === 0xffffffff || size === 0xffffffff || localOffset === 0xffffffff || diskStart !== 0) throw new Error('Entrada ZIP64 ou multi-volume não suportada.');
-      let nameBytes = central.subarray(offset + 46, offset + 46 + nameLength);
-      let name;
-      if (flags & 0x0800) name = decoder.decode(nameBytes);
-      else {
-        try { name = new TextDecoder('utf-8', { fatal: true }).decode(nameBytes); }
-        catch { name = new TextDecoder('windows-1252').decode(nameBytes); }
-      }
-      entries.push({ name, nameBytes: new Uint8Array(nameBytes), versionMadeBy, versionNeeded, flags, method, modTime, modDate, internalAttrs, externalAttrs, crc, compressedSize, size, localOffset, directory: name.endsWith('/') });
-      offset = end;
-    }
-    if (!entries.length) throw new Error('O arquivo ZIP não contém entradas.');
-    return entries;
-  },
-  async read(file, entry) {
-    if (entry.directory) return new Uint8Array();
-    if (entry.flags & 1) throw new Error('A entrada está criptografada. O IPA Manager não tenta remover criptografia.');
-    if (![0, 8].includes(entry.method)) throw new Error(`Método de compressão ${entry.method} não suportado.`);
-    const head = new Uint8Array(await file.slice(entry.localOffset, entry.localOffset + 30).arrayBuffer());
-    if (head.byteLength < 30) throw new Error('Cabeçalho ZIP local truncado.');
-    const hv = new DataView(head.buffer, head.byteOffset, head.byteLength);
-    if (hv.getUint32(0, true) !== this.local) throw new Error('Cabeçalho ZIP local inválido.');
-    const nameLength = hv.getUint16(26, true), extraLength = hv.getUint16(28, true);
-    const localNameBytes = new Uint8Array(await file.slice(entry.localOffset + 30, entry.localOffset + 30 + nameLength).arrayBuffer());
-    if (localNameBytes.length !== entry.nameBytes.length || localNameBytes.some((byte, index) => byte !== entry.nameBytes[index])) throw new Error('O nome no cabeçalho local difere do índice ZIP.');
-    const start = entry.localOffset + 30 + nameLength + extraLength;
-    if (start + entry.compressedSize > file.size) throw new Error('Dados compactados apontam para fora do arquivo.');
-    if (entry.size > 250 * 1024 * 1024) throw new Error('Este item tem mais de 250 MB; extração no navegador móvel foi bloqueada para evitar falta de memória.');
-    const compressed = file.slice(start, start + entry.compressedSize);
-    if (entry.method === 0) {
-      const bytes = new Uint8Array(await compressed.arrayBuffer());
-      if (bytes.byteLength !== entry.size) throw new Error('Tamanho extraído não corresponde ao declarado.');
-      return bytes;
-    }
-    if (typeof DecompressionStream === 'undefined') throw new Error('Este navegador não oferece descompressão Deflate. Atualize o iOS ou use outro navegador compatível.');
-    let stream;
-    try { stream = compressed.stream().pipeThrough(new DecompressionStream('deflate-raw')); }
-    catch (error) { throw new Error(`Deflate-raw indisponível neste navegador: ${error.message}`); }
-    const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
-    if (bytes.byteLength !== entry.size) throw new Error('Tamanho descompactado não corresponde ao declarado.');
-    return bytes;
-  }
-};
-
-const crcTable = (() => {
-  const table = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; table[n] = c >>> 0; }
-  return table;
-})();
-function crc32(bytes) { let crc = 0xffffffff; for (const byte of bytes) crc = crcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8); return (crc ^ 0xffffffff) >>> 0; }
+const { ZIP, crc32 } = window.IPAZipEngine;
 
 // Apple binary/XML property-list decoder. Binary format supports common scalar, array and dictionary types.
 function parsePlist(bytes) {
@@ -316,56 +218,9 @@ $('#ipaFile').addEventListener('change', event => { const file = event.target.fi
 $('#saveIpa').addEventListener('click', () => { if (state.file) downloadBlob(state.file, state.file.name); });
 $('#shareIpa').addEventListener('click', async () => {
   if (!state.file) return;
-  await shareOrDownload(state.file, state.file.name, 'IPA Manager original package');
+  await shareOrDownload(state.file, state.file.name, 'Original IPA package');
 });
 
-// A PWA cannot sign or install arbitrary IPA files. This action hands the original
-// package to an installed app through the native share sheet when the browser allows it.
-$('#sendInstaller').addEventListener('click', async () => {
-  if (!state.file) { notify('Importe um IPA antes de enviá-lo ao instalador.'); return; }
-  const ipaName = safeFileName(state.file.name.toLowerCase().endsWith('.ipa') ? state.file.name : state.file.name + '.ipa');
-  const ipaFile = new File([state.file], ipaName, { type: 'application/octet-stream', lastModified: state.file.lastModified || Date.now() });
-  try {
-    if (typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [ipaFile] })) {
-      await navigator.share({ files: [ipaFile], title: 'Importar IPA no instalador', text: 'Arquivo IPA original. Importe-o em um instalador compatível, se disponível.' });
-      logActivity('IPA enviado à folha de compartilhamento', ipaName, 'install');
-    } else {
-      downloadBlob(state.file, ipaName);
-      notify('Compartilhamento de arquivos indisponível. O IPA original foi salvo para importação manual no instalador.');
-    }
-  } catch (error) {
-    if (error.name !== 'AbortError') {
-      console.warn('IPA share failed:', error);
-      notify('Não foi possível abrir o compartilhamento. Salve o IPA e importe-o pelo instalador.');
-    }
-  }
-});
-
-// OTA installation is only available for an already signed, provisioned app whose
-// public HTTPS manifest and IPA are hosted for a distribution method accepted by iOS.
-$('#otaInstall').addEventListener('click', () => {
-  const raw = $('#manifestUrl').value.trim();
-  let manifest;
-  try {
-    manifest = new URL(raw);
-    if (manifest.protocol !== 'https:') throw new Error('O manifest precisa estar hospedado em HTTPS.');
-    if (manifest.username || manifest.password) throw new Error('A URL não pode conter credenciais.');
-    if (!raw || raw.length > 2000) throw new Error('Informe uma URL pública válida para o manifest.plist.');
-  } catch (error) {
-    notify(error.message || 'URL de manifest inválida.');
-    return;
-  }
-  const isAppleMobile = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  if (!isAppleMobile) {
-    notify('A instalação por manifest é um recurso do iOS. Abra esta página no Safari do iPhone.');
-    return;
-  }
-  if (!window.confirm('O iOS tentará instalar um app publicado por este manifest. Continue somente se você confiar no desenvolvedor e na origem do arquivo.')) return;
-  const installUrl = 'itms-services://?action=download-manifest&url=' + encodeURIComponent(manifest.href);
-  logActivity('Solicitação de instalação OTA', manifest.hostname, 'install');
-  window.location.href = installUrl;
-  notify('Solicitação enviada ao iOS. O sistema só instalará o pacote se assinatura, manifesto e hospedagem forem válidos.');
-});
 $('#extractApp').addEventListener('click', async () => {
   if (!state.file || !state.appPrefix) return;
   const button = $('#extractApp'); button.disabled = true; button.textContent = 'Extraindo…';
@@ -612,7 +467,6 @@ async function searchRepo(repo) {
       const assets = (release.assets || []).filter(asset => /\.(ipa|zip)$/i.test(asset.name));
       return `<article class="release-card"><div class="release-top"><div class="release-title"><b>${escapeHTML(release.name || release.tag_name)}</b><small>${escapeHTML(repo)} · ${escapeHTML(release.tag_name)} · ${release.published_at ? new Date(release.published_at).toLocaleDateString('pt-BR') : 'Data não informada'}${release.prerelease ? ' · Pré-lançamento' : ''}</small></div><span class="release-badge">${assets.length} pacote(s)</span></div>${release.body ? `<p style="font-size:10px;color:#8a9bb0;line-height:1.6;max-height:55px;overflow:hidden">${escapeHTML(release.body.slice(0,260))}${release.body.length>260?'…':''}</p>` : ''}<div class="asset-list">${assets.length ? assets.map(asset => `<div class="asset-row"><b>${escapeHTML(asset.name)}</b><small>${formatBytes(asset.size)}</small><a href="${escapeHTML(asset.browser_download_url)}" target="_blank" rel="noopener">Baixar ↗</a></div>`).join('') : '<small style="color:#71859e;font-size:10px">Nenhum arquivo IPA/ZIP nesta release.</small>'}</div></article>`;
     }).join('');
-    addSideStoreButtons($('#releaseResults'));
     logActivity('Consulta GitHub', `${repo} · ${releases.length} releases`, 'source');
   } catch (error) {
     $('#releaseResults').innerHTML = `<div class="empty-state"><b>Não foi possível consultar</b><small>${escapeHTML(error.message)}</small></div>`;
@@ -643,43 +497,6 @@ async function addSource(url) {
 }
 function safeHttps(value) { try { const url = new URL(value); return url.protocol === 'https:' ? url.href : ''; } catch { return ''; } }
 
-function launchSideStoreInstall(rawUrl) {
-  const downloadUrl = safeHttps(rawUrl);
-  if (!downloadUrl) { notify('O link do IPA precisa ser HTTPS.'); return; }
-  const parsedUrl = new URL(downloadUrl);
-  if (!/\.ipa$/i.test(parsedUrl.pathname)) {
-    notify('A integração SideStore exige uma URL direta para um arquivo .ipa.');
-    return;
-  }
-  const installLink = 'sidestore://install?url=' + encodeURIComponent(downloadUrl);
-  logActivity('Abrindo IPA no SideStore', parsedUrl.hostname, 'install');
-  window.location.href = installLink;
-  notify('Solicitação enviada ao SideStore. A instalação depende de ele estar instalado, configurado e de o IPA ser compatível.');
-}
-
-function addSideStoreButtons(container) {
-  if (!container) return;
-  container.querySelectorAll('a[href]').forEach(link => {
-    let parsedUrl;
-    try { parsedUrl = new URL(link.href); } catch { return; }
-    if (parsedUrl.protocol !== 'https:' || !/\.ipa$/i.test(parsedUrl.pathname)) return;
-    const row = link.closest('.asset-row, .library-row');
-    if (!row || row.querySelector('[data-sidestore-install]')) return;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'secondary-button sidestore-install-button';
-    button.dataset.sidestoreInstall = parsedUrl.href;
-    button.textContent = 'Instalar via SideStore';
-    row.append(button);
-  });
-}
-
-document.addEventListener('click', event => {
-  const button = event.target.closest('[data-sidestore-install]');
-  if (!button) return;
-  launchSideStoreInstall(button.getAttribute('data-sidestore-install'));
-});
-
 $('#addSource').addEventListener('click', () => addSource($('#sourceUrl').value.trim()));
 $('#sourceUrl').addEventListener('keydown', event => { if (event.key === 'Enter') $('#addSource').click(); });
 $('#addNuvio').addEventListener('click', () => addSource(NUVIO_SOURCE));
@@ -698,7 +515,6 @@ function renderSourceApps(source) {
   }).join('');
 }
 function bindSourceActions(panel, sourceIndex) {
-  addSideStoreButtons(panel);
   $$('[data-version-info]', panel).forEach(button => button.addEventListener('click', () => {
     const app = state.sources[sourceIndex].apps[Number(button.dataset.versionInfo)];
     const version = app.versions[0] || {};

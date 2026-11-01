@@ -57,30 +57,20 @@
           <div class="file-actions build-actions"><button class="secondary-button" id="extractApp">Extrair aplicativo (.app)</button><button class="secondary-button" id="rebuildIpa">Reconstruir IPA</button></div>
           <div id="appExportPanel" class="signature-card output-panel hidden"><strong id="appExportTitle">Bundle .app preparado</strong><p id="appExportDescription">Os arquivos serão organizados em uma pasta .app dentro de um arquivo ZIP.</p><div class="file-actions"><button class="secondary-button" id="saveAppBundle">Salvar .app.zip</button><button class="primary-button" id="shareAppBundle">Compartilhar .app.zip</button></div></div>
           <div id="rebuiltPanel" class="signature-card output-panel hidden"><strong id="rebuiltTitle">IPA reconstruído</strong><p id="rebuiltDescription">O pacote será reconstruído a partir das entradas do IPA original.</p><div class="file-actions"><button class="secondary-button" id="saveRebuiltIpa">Salvar IPA reconstruído</button><button class="primary-button" id="shareRebuiltIpa">Compartilhar IPA reconstruído</button></div><small class="output-warning">A reconstrução do contêiner não assina, re-assina nem corrige o aplicativo. A instalação continua dependendo de assinatura, provisionamento e compatibilidade aceitos pelo iOS.</small></div>
-          <section class="install-assist signature-card" id="installAssistPanel">
-            <div class="install-assist-heading"><div><span class="eyebrow">INSTALAÇÃO ASSISTIDA</span><strong>Instalar no iPhone</strong></div><span class="install-state">Requer instalador compatível</span></div>
-            <p>O IPA Manager prepara e encaminha o arquivo, mas não consegue assinar ou instalar um IPA arbitrário sozinho. O iOS exige assinatura, provisionamento e uma via de distribuição compatíveis.</p>
+          <section class="install-assist signature-card" id="managedDistributionPanel" aria-labelledby="managedDistributionTitle">
+            <div class="install-assist-heading"><div><span class="eyebrow">DISTRIBUIÇÃO OFICIAL</span><strong id="managedDistributionTitle">Instalação gerenciada pelo IPA Manager</strong></div><span class="install-state" id="managedInstallStatus">DESATIVADA</span></div>
+            <p>O recurso de instalação própria depende de um aplicativo iOS nativo com MarketplaceKit, entitlement concedido pela Apple e serviços de licença e distribuição configurados. Nenhuma instalação será simulada nesta versão web.</p>
             <div class="install-option">
-              <div><b>1. Enviar o IPA local para um instalador</b><small>Compartilha o arquivo IPA original pela folha nativa do iPhone. Se o instalador não aparecer, salve em Arquivos e importe o IPA dentro dele. O SideStore pode importar arquivos locais em My Apps → +, depois da configuração inicial.</small></div>
-              <button class="primary-button" id="sendInstaller">Enviar IPA ao instalador</button>
-            </div>
-            <div class="install-option">
-              <div><b>2. Instalar um IPA remoto via SideStore</b><small>Nas releases do GitHub e nas fontes AltStore, use o botão “Instalar via SideStore” ao lado de um link HTTPS direto para um arquivo .ipa. O SideStore precisa estar instalado e configurado.</small></div>
-            </div>
-            <div class="install-option ota-option">
-              <div><b>3. Instalação por manifest HTTPS</b><small>Somente para um IPA já assinado e provisionado para distribuição aceita pelo iOS, com o arquivo IPA e o manifest.plist hospedados publicamente em HTTPS.</small></div>
-              <label for="manifestUrl">URL pública do manifest.plist</label>
-              <input id="manifestUrl" type="url" inputmode="url" autocomplete="url" placeholder="https://example.com/manifest.plist">
-              <button class="secondary-button" id="otaInstall">Solicitar instalação pelo iOS</button>
-              <small class="output-warning">Esta opção não envia nem assina o IPA local e não é um método de assinatura gratuita com Apple Account pessoal.</small>
+              <div><b>Estado da integração</b><small id="managedInstallDescription">Aguardando autorização do Alternative App Marketplace Entitlement, implementação nativa SwiftUI/MarketplaceKit e configuração do App License Delivery SDK. Até lá, o IPA Manager continua oferecendo importação, análise, extração, reconstrução e exportação local.</small></div>
+              <button class="secondary-button" id="managedInstallButton" type="button" disabled aria-disabled="true">Instalação gerenciada indisponível</button>
             </div>
             <div class="installer-links">
-              <a href="https://docs.sidestore.io/docs/advanced/url-schema" target="_blank" rel="noopener">Integração SideStore ↗</a>
-              <a href="https://docs.sidestore.io/docs/installation/prerequisites" target="_blank" rel="noopener">Requisitos do SideStore ↗</a>
-              <a href="https://faq.altstore.io/altstore-classic/altserver" target="_blank" rel="noopener">AltStore Classic ↗</a>
-              <a href="https://developer.apple.com/support/app-distribution-in-brazil/" target="_blank" rel="noopener">Distribuição alternativa no Brasil ↗</a>
+              <a href="https://developer.apple.com/br/support/alternative-app-marketplace-br/" target="_blank" rel="noopener">Requisitos do marketplace no Brasil ↗</a>
+              <a href="https://developer.apple.com/documentation/marketplacekit" target="_blank" rel="noopener">MarketplaceKit ↗</a>
+              <a href="https://developer.apple.com/documentation/marketplacekit/applibrary" target="_blank" rel="noopener">AppLibrary ↗</a>
+              <a href="https://developer.apple.com/documentation/AppLicenseDeliverySDK" target="_blank" rel="noopener">App License Delivery SDK ↗</a>
             </div>
-            <div class="install-footnote"><b>Importante:</b> SideStore e AltStore Classic são ferramentas gratuitas de sideload, mas a configuração inicial do SideStore exige um computador. Um catálogo AltStore JSON não é, por si só, um marketplace autorizado pela Apple. Marketplaces alternativos no Brasil distribuem apps notarizados e exigem autorização da Apple.</div>
+            <div class="install-footnote"><b>Feature flags:</b> distribuição, instalação gerenciada, inventário de apps instalados e atualizações automáticas permanecem desabilitados em <strong>feature-flags.js</strong>. A ativação exige autorização e implementação nativa verificável; editar a flag isoladamente não habilita a instalação.</div>
           </section>
           <p class="tool-note">A extração gera um ZIP que contém a pasta <code>NomeDoApp.app/</code>; use Arquivos para descompactá-lo. Para importar em um instalador, compartilhe ou salve o arquivo <code>.ipa</code> original.</p>
           <div class="progress-track hidden" id="progressTrack"><div id="progressBar"></div></div><div class="status-line" id="fileStatus">Aguardando análise…</div>
@@ -120,9 +110,9 @@
 
       <section class="view" id="view-help">
         <div class="page-heading"><div><div class="eyebrow">LIMITES E INSTALAÇÃO</div><h1>Central de ajuda</h1><p>O que funciona diretamente no iPhone, o que depende do iOS e como interpretar os resultados.</p></div><span class="page-icon">?</span></div>
-        <div class="help-section"><h2>O IPA Manager instala um IPA sozinho?</h2><p>Não. Como PWA, ele não pode assinar nem instalar arbitrariamente pacotes iOS. Ele encaminha IPAs locais pela folha de compartilhamento, solicita a abertura de links HTTPS no SideStore e pode abrir um manifest OTA já válido. A instalação continua sujeita à assinatura, ao provisionamento e às regras de distribuição da Apple.</p></div>
+        <div class="help-section"><h2>O IPA Manager instala um IPA sozinho?</h2><p>Não nesta versão. A instalação gerenciada está desabilitada até existir um app nativo autorizado pela Apple, com MarketplaceKit, AppLibrary e App License Delivery SDK configurados. A versão PWA continua focada em operações locais e não encaminha a instalação para ferramentas externas.</p></div>
         <div class="help-section"><h2>O que mudou no Brasil?</h2><p>A Apple passou a oferecer distribuição alternativa no Brasil com iOS 26.5. Marketplaces alternativos e distribuição pela web exigem autorização da Apple e apps autenticados/notarizados. Um catálogo JSON comum não é automaticamente um marketplace autorizado.</p><a class="external-link" href="https://developer.apple.com/support/app-distribution-in-brazil/" target="_blank" rel="noopener">Documentação para desenvolvedores da Apple ↗</a></div>
-        <div class="help-section"><h2>Como usar a integração SideStore?</h2><ol><li>Instale e configure o SideStore seguindo a documentação oficial; a configuração inicial exige um computador.</li><li>Em uma release do GitHub ou fonte AltStore, localize um link HTTPS direto para um arquivo .ipa.</li><li>Toque em “Instalar via SideStore”. O iPhone tentará abrir o SideStore com o link do pacote.</li><li>Para um IPA local, use “Enviar IPA ao instalador”. Se o SideStore não aparecer na folha de compartilhamento, salve o arquivo no app Arquivos e importe-o em SideStore → My Apps → +.</li></ol><p>O Safari não oferece uma API pública para listar os instaladores instalados. Consulte os requisitos do SideStore antes de começar.</p></div>
+        <div class="help-section"><h2>Por que a instalação gerenciada está desabilitada?</h2><p>O Brasil permite marketplaces alternativos no iOS 26.5 ou posterior, mas a Apple exige autorização específica, inscrição empresarial no Apple Developer Program e requisitos contínuos de segurança, moderação e elegibilidade. Sem o entitlement, o aplicativo nativo e o servidor de licenças, o IPA Manager não pode apresentar uma instalação própria como funcional.</p><a class="external-link" href="https://developer.apple.com/br/support/alternative-app-marketplace-br/" target="_blank" rel="noopener">Requisitos oficiais da Apple ↗</a></div>
         <div class="help-section"><h2>O que fazem “Extrair aplicativo” e “Reconstruir IPA”?</h2><p>“Extrair aplicativo (.app)” cria um ZIP com a hierarquia completa do bundle em uma pasta de mesmo nome, por exemplo <code>Nuvio.app/</code>. O app Arquivos pode descompactar esse ZIP. “Reconstruir IPA” reempacota as entradas do IPA original em um novo contêiner ZIP, verificando o CRC-32 de cada arquivo e preservando os atributos Unix disponíveis no arquivo original. Nenhuma dessas ações assina, re-assina, instala ou repara um aplicativo.</p></div>
         <div class="help-section"><h2>O que significa “assinatura detectada”?</h2><p>Significa apenas que foram encontrados arquivos associados a assinatura, como <code>_CodeSignature/CodeResources</code> ou <code>embedded.mobileprovision</code>. O IPA Manager não valida a cadeia criptográfica da assinatura, não verifica o estado do certificado nos servidores Apple e não garante que o iOS aceitará a instalação.</p></div>
         <div class="help-section"><h2>Privacidade</h2><p>O IPA selecionado é processado localmente. As únicas operações de rede são as que você inicia para consultar repositórios, fontes e baixar arquivos. O aplicativo não solicita Apple ID, senha, certificado privado ou UDID do dispositivo.</p></div>
@@ -134,6 +124,8 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <dialog id="entryDialog" class="modal"><form method="dialog"><div class="modal-head"><div><span class="eyebrow">ARQUIVO DO IPA</span><h2 id="entryTitle">Detalhes do arquivo</h2></div><button class="icon-button" aria-label="Fechar">×</button></div><div id="entryDetails" class="modal-body"></div><div class="modal-actions"><button class="secondary-button" value="cancel">Fechar</button><button type="button" class="primary-button" id="downloadEntry">Exportar arquivo</button><button type="button" class="primary-button hidden" id="shareEntry">Compartilhar</button></div></form></dialog>
   <footer class="footer"><span>IPA MANAGER</span><span>Feito para análise local e distribuição responsável.</span></footer>
+  <script src="zip-engine.js" defer></script>
+  <script src="feature-flags.js" defer></script>
   <script src="app.js" defer></script>
 </body>
 </html>

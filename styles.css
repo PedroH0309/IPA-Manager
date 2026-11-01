@@ -36,3 +36,22 @@
 .install-footnote b{color:#b8cee4}
 .sidestore-install-button{margin:6px 0 2px;font-size:9px;padding:6px 8px}
 @media(max-width:650px){.install-assist{padding:13px}.install-assist-heading{align-items:flex-start;flex-direction:column}.install-state{white-space:normal}.install-option>button{width:100%}.installer-links{flex-direction:column;gap:8px}}
+
+/* Marketplace distribution remains visibly unavailable until Apple authorization and native implementation exist. */
+.install-assist{margin-top:16px;padding:16px;background:linear-gradient(145deg,#101d2d,#111a27);border-color:#2c4763}
+.install-assist-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.install-assist-heading .eyebrow{display:block;margin:0 0 5px;color:#70b8f5}
+.install-assist-heading strong{display:block;color:#e0edfa;font-size:14px}
+.install-state{font-size:8px;color:#e7c68c;background:#332b1e;border:1px solid #58472c;border-radius:30px;padding:5px 8px;white-space:nowrap}
+.install-assist>p{font-size:10px;line-height:1.65;color:#9aacc0;margin:8px 0 13px}
+.install-option{padding:13px;margin-top:9px;border:1px solid #263c54;border-radius:11px;background:#0c1623}
+.install-option>div b{display:block;color:#d8e8f8;font-size:11px}
+.install-option>div small{display:block;color:#879bb2;font-size:9px;line-height:1.65;margin-top:5px}
+.install-option>button{margin-top:11px}
+.install-option>button:disabled{opacity:.55;cursor:not-allowed}
+.installer-links{display:flex;flex-wrap:wrap;gap:13px;margin:13px 1px 5px}
+.installer-links a{font-size:9px;color:#83c2fa;text-decoration:none}
+.install-footnote{margin-top:12px;padding:11px;border-radius:9px;background:#0a121d;color:#8296ae;font-size:9px;line-height:1.7}
+.install-footnote b{color:#b8cee4}
+.install-footnote strong{color:#c5d8ea}
+@media(max-width:650px){.install-assist{padding:13px}.install-assist-heading{align-items:flex-start;flex-direction:column}.install-state{white-space:normal}.install-option>button{width:100%}.installer-links{flex-direction:column;gap:8px}}
