@@ -4,7 +4,7 @@ const NUVIO_SOURCE = 'https://raw.githubusercontent.com/NuvioMedia/NuvioMobile/c
 const STORAGE_KEY = 'ipa-manager-v1';
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const state = { file: null, entries: [], info: null, appPrefix: '', hash: '', currentEntry: null, libraryTab: 'packages', activity: [], sources: [], packages: [], checks: 0 };
+const state = { file: null, entries: [], info: null, appPrefix: '', hash: '', currentEntry: null, appBundleZip: null, appBundleName: '', rebuiltIpa: null, rebuiltIpaName: '', libraryTab: 'packages', activity: [], sources: [], packages: [], checks: 0 };
 let toastTimer;
 
 function escapeHTML(value) {
@@ -96,8 +96,12 @@ const ZIP = {
     const decoder = new TextDecoder('utf-8');
     for (let index = 0; index < count; index++) {
       if (offset + 46 > central.length || cv.getUint32(offset, true) !== this.central) throw new Error(`Índice ZIP corrompido na entrada ${index + 1}.`);
+      const versionMadeBy = cv.getUint16(offset + 4, true);
+      const versionNeeded = cv.getUint16(offset + 6, true);
       const flags = cv.getUint16(offset + 8, true);
       const method = cv.getUint16(offset + 10, true);
+      const modTime = cv.getUint16(offset + 12, true);
+      const modDate = cv.getUint16(offset + 14, true);
       const crc = cv.getUint32(offset + 16, true);
       const compressedSize = cv.getUint32(offset + 20, true);
       const size = cv.getUint32(offset + 24, true);
@@ -105,6 +109,8 @@ const ZIP = {
       const extraLength = cv.getUint16(offset + 30, true);
       const commentLength = cv.getUint16(offset + 32, true);
       const diskStart = cv.getUint16(offset + 34, true);
+      const internalAttrs = cv.getUint16(offset + 36, true);
+      const externalAttrs = cv.getUint32(offset + 38, true);
       const localOffset = cv.getUint32(offset + 42, true);
       const end = offset + 46 + nameLength + extraLength + commentLength;
       if (end > central.length) throw new Error('Metadados de uma entrada ZIP estão truncados.');
@@ -116,7 +122,7 @@ const ZIP = {
         try { name = new TextDecoder('utf-8', { fatal: true }).decode(nameBytes); }
         catch { name = new TextDecoder('windows-1252').decode(nameBytes); }
       }
-      entries.push({ name, nameBytes: new Uint8Array(nameBytes), flags, method, crc, compressedSize, size, localOffset, directory: name.endsWith('/') });
+      entries.push({ name, nameBytes: new Uint8Array(nameBytes), versionMadeBy, versionNeeded, flags, method, modTime, modDate, internalAttrs, externalAttrs, crc, compressedSize, size, localOffset, directory: name.endsWith('/') });
       offset = end;
     }
     if (!entries.length) throw new Error('O arquivo ZIP não contém entradas.');
@@ -253,7 +259,9 @@ async function inspectFile(file) {
     notify('Selecione um arquivo com extensão .ipa.'); return;
   }
   if (file.size > 700 * 1024 * 1024) { notify('Arquivo acima de 700 MB: análise bloqueada para proteger a memória do navegador móvel.'); return; }
-  state.file = file; state.entries = []; state.info = null; state.appPrefix = ''; state.hash = '';
+  state.file = file; state.entries = []; state.info = null; state.appPrefix = ''; state.hash = ''; state.appBundleZip = null; state.appBundleName = ''; state.rebuiltIpa = null; state.rebuiltIpaName = '';
+  $('#appExportPanel')?.classList.add('hidden'); $('#rebuiltPanel')?.classList.add('hidden');
+  $('#extractApp').disabled = true; $('#rebuildIpa').disabled = true;
   $('#filePanel').classList.remove('hidden'); $('#fileName').textContent = file.name; $('#fileSize').textContent = formatBytes(file.size);
   $('#metadataGrid').innerHTML = ''; $('#entryList').innerHTML = ''; $('#hashResult').classList.add('hidden'); $('#signatureCard').textContent = '';
   $('#progressTrack').classList.remove('hidden'); $('#progressBar').style.width = '12%'; $('#fileStatus').textContent = 'Lendo diretório ZIP…';
@@ -286,6 +294,7 @@ async function inspectFile(file) {
     const codeResources = entries.some(e => e.name === `${state.appPrefix}_CodeSignature/CodeResources`);
     const embedded = entries.some(e => e.name === `${state.appPrefix}embedded.mobileprovision`);
     const hasSignatureBits = codeResources || embedded;
+    $('#extractApp').disabled = false; $('#rebuildIpa').disabled = false;
     $('#signatureCard').innerHTML = `<strong>${hasSignatureBits ? 'Indicadores de assinatura encontrados' : 'Indicadores de assinatura não encontrados'}</strong><br>${codeResources ? '✓ _CodeSignature/CodeResources presente. ' : '— CodeResources ausente. '}${embedded ? '✓ embedded.mobileprovision presente.' : '— Perfil embedded.mobileprovision ausente.'}<br><span style="color:#748ba4">Isso não valida a assinatura criptográfica nem garante que o iOS aceite o pacote.</span>`;
     const record = { name: file.name, size: file.size, bundleId: info.CFBundleIdentifier || '', version: info.CFBundleShortVersionString || '', date: new Date().toISOString() };
     state.packages = [record, ...state.packages.filter(p => !(p.name === record.name && p.size === record.size))].slice(0, 50);
@@ -307,12 +316,63 @@ $('#ipaFile').addEventListener('change', event => { const file = event.target.fi
 $('#saveIpa').addEventListener('click', () => { if (state.file) downloadBlob(state.file, state.file.name); });
 $('#shareIpa').addEventListener('click', async () => {
   if (!state.file) return;
-  try {
-    if (typeof navigator.share !== 'function' || !navigator.canShare || !navigator.canShare({ files: [state.file] })) throw new Error('Este navegador não oferece compartilhamento de arquivos. Use “Salvar IPA” e abra o arquivo pelo app Arquivos.');
-    await navigator.share({ files: [state.file], title: state.file.name });
-  } catch (error) { if (error.name !== 'AbortError') notify(error.message); }
+  await shareOrDownload(state.rebuiltIpa || state.file, state.rebuiltIpaName || state.file.name, 'IPA Manager package');
 });
-$('#removeFile').addEventListener('click', () => { state.file = null; state.entries = []; state.info = null; $('#filePanel').classList.add('hidden'); $('#progressBar').style.background = '#54a9ff'; notify('Arquivo removido da sessão.'); });
+$('#extractApp').addEventListener('click', async () => {
+  if (!state.file || !state.appPrefix) return;
+  const button = $('#extractApp'); button.disabled = true; button.textContent = 'Extraindo…';
+  try {
+    const appDir = state.appPrefix.replace(/\/$/, '');
+    const appName = appDir.split('/').pop();
+    const selected = state.entries.filter(entry => entry.name === `${appDir}/` || entry.name.startsWith(`${appDir}/`));
+    if (!selected.some(entry => entry.name === `${appDir}/`)) {
+      selected.unshift({ name: `${appDir}/`, directory: true, size: 0, crc: 0, externalAttrs: 0x41ed0010, versionMadeBy: 0x0314 });
+    }
+    if (!selected.some(entry => !entry.directory)) throw new Error('Nenhum arquivo foi encontrado dentro do bundle .app.');
+    const mapped = selected.map(entry => ({ ...entry, name: `${appName}${entry.name.slice(appDir.length)}` }));
+    const blob = await buildZipBlob(mapped, 'app');
+    state.appBundleZip = blob;
+    state.appBundleName = safeFileName(`${appName}.zip`);
+    $('#appExportTitle').textContent = `${appName} preparado`;
+    $('#appExportDescription').textContent = `${selected.filter(entry => !entry.directory).length} arquivos organizados dentro de ${appName}/. O ZIP preserva o nome e a hierarquia do bundle; descompacte-o no app Arquivos para visualizar a pasta.`;
+    $('#appExportPanel').classList.remove('hidden');
+    $('#fileStatus').textContent = `${appName}.app exportado com verificação CRC-32 concluída.`;
+    logActivity(`${appName}.app extraído`, `${selected.length} entradas · ${formatBytes(blob.size)}`, 'extract');
+    notify('Bundle .app preparado como arquivo ZIP.');
+  } catch (error) { notify(`Falha ao extrair o aplicativo: ${error.message}`); }
+  finally { button.disabled = false; button.textContent = 'Extrair aplicativo (.app)'; }
+});
+$('#saveAppBundle').addEventListener('click', () => {
+  if (state.appBundleZip) downloadBlob(state.appBundleZip, state.appBundleName);
+});
+$('#shareAppBundle').addEventListener('click', async () => {
+  if (state.appBundleZip) await shareOrDownload(state.appBundleZip, state.appBundleName, 'App bundle export');
+});
+$('#rebuildIpa').addEventListener('click', async () => {
+  if (!state.file || !state.entries.length) return;
+  const button = $('#rebuildIpa'); button.disabled = true; button.textContent = 'Reconstruindo…';
+  try {
+    const blob = await buildZipBlob(state.entries, 'ipa');
+    const baseName = (state.file.name || 'application.ipa').replace(/\.ipa$/i, '');
+    state.rebuiltIpa = blob;
+    state.rebuiltIpaName = safeFileName(`${baseName}-rebuilt.ipa`);
+    $('#rebuiltTitle').textContent = `${state.rebuiltIpaName} pronto`;
+    $('#rebuiltDescription').textContent = `${state.entries.length} entradas · ${formatBytes(blob.size)}. O contêiner ZIP foi reconstruído sem alterar intencionalmente o conteúdo dos arquivos.`;
+    $('#rebuiltPanel').classList.remove('hidden');
+    $('#fileStatus').textContent = 'IPA reconstruído; todas as entradas passaram pela verificação CRC-32.';
+    logActivity(state.rebuiltIpaName, `${state.entries.length} entradas · ${formatBytes(blob.size)}`, 'rebuild');
+    notify('Arquivo IPA reconstruído. A instalação ainda depende de assinatura e provisionamento válidos.');
+  } catch (error) { notify(`Não foi possível reconstruir o IPA: ${error.message}`); }
+  finally { button.disabled = false; button.textContent = 'Reconstruir IPA'; }
+});
+$('#saveRebuiltIpa').addEventListener('click', () => {
+  if (state.rebuiltIpa) downloadBlob(state.rebuiltIpa, state.rebuiltIpaName);
+});
+$('#shareRebuiltIpa').addEventListener('click', async () => {
+  if (state.rebuiltIpa) await shareOrDownload(state.rebuiltIpa, state.rebuiltIpaName, 'Reconstructed IPA');
+});
+
+$('#removeFile').addEventListener('click', () => { state.file = null; state.entries = []; state.info = null; state.appPrefix = ''; state.appBundleZip = null; state.rebuiltIpa = null; $('#appExportPanel').classList.add('hidden'); $('#rebuiltPanel').classList.add('hidden'); $('#filePanel').classList.add('hidden'); $('#extractApp').disabled = true; $('#rebuildIpa').disabled = true; $('#progressBar').style.background = '#54a9ff'; notify('Arquivo removido da sessão.'); });
 const dropzone = $('#dropzone');
 dropzone.addEventListener('dragover', event => { event.preventDefault(); dropzone.classList.add('dragging'); });
 dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragging'));
@@ -353,6 +413,94 @@ function mimeFor(path) {
   const ext = path.split('.').pop().toLowerCase();
   return ({plist:'application/xml',json:'application/json',txt:'text/plain',xml:'application/xml',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',svg:'image/svg+xml',html:'text/html',css:'text/css',js:'text/javascript',pdf:'application/pdf',ipa:'application/octet-stream',mobileprovision:'application/octet-stream'}[ext] || 'application/octet-stream');
 }
+// ZIP32 writer. It rebuilds archives with STORE compression and preserves Unix
+// external attributes (including executable and symlink mode bits) where present.
+// The resulting file is a valid ZIP container, but this is not a code-signing step.
+const EXPORT_LIMIT = 400 * 1024 * 1024;
+function validateZipPath(name) {
+  if (typeof name !== 'string' || !name || name.startsWith('/') || /^[a-z]:/i.test(name) || name.includes('\\') || name.includes('\0')) {
+    throw new Error(`Caminho ZIP inseguro ou inválido: ${String(name).slice(0, 100)}`);
+  }
+  if (name.split('/').some(part => part === '..')) throw new Error(`Caminho ZIP contém tentativa de sair da pasta: ${name}`);
+  return name;
+}
+function writeZipLocalHeader(nameBytes, crc, size, modTime, modDate) {
+  const bytes = new Uint8Array(30 + nameBytes.length); const view = new DataView(bytes.buffer);
+  view.setUint32(0, 0x04034b50, true); view.setUint16(4, 20, true); view.setUint16(6, 0x0800, true);
+  view.setUint16(8, 0, true); view.setUint16(10, modTime, true); view.setUint16(12, modDate, true);
+  view.setUint32(14, crc, true); view.setUint32(18, size, true); view.setUint32(22, size, true);
+  view.setUint16(26, nameBytes.length, true); view.setUint16(28, 0, true); bytes.set(nameBytes, 30);
+  return bytes;
+}
+function writeZipCentralHeader(entry, nameBytes, crc, size, localOffset) {
+  const bytes = new Uint8Array(46 + nameBytes.length); const view = new DataView(bytes.buffer);
+  view.setUint32(0, 0x02014b50, true);
+  view.setUint16(4, Number.isInteger(entry.versionMadeBy) ? entry.versionMadeBy : 0x0314, true);
+  view.setUint16(6, 20, true); view.setUint16(8, 0x0800, true); view.setUint16(10, 0, true);
+  view.setUint16(12, entry.modTime || 0, true); view.setUint16(14, entry.modDate || 0, true);
+  view.setUint32(16, crc, true); view.setUint32(20, size, true); view.setUint32(24, size, true);
+  view.setUint16(28, nameBytes.length, true); view.setUint16(30, 0, true); view.setUint16(32, 0, true);
+  view.setUint16(34, 0, true); view.setUint16(36, entry.internalAttrs || 0, true);
+  view.setUint32(38, Number.isInteger(entry.externalAttrs) ? entry.externalAttrs : (entry.directory ? 0x41ed0010 : 0x81a40000), true);
+  view.setUint32(42, localOffset, true); bytes.set(nameBytes, 46);
+  return bytes;
+}
+async function buildZipBlob(inputEntries, kind) {
+  if (!Array.isArray(inputEntries) || !inputEntries.length) throw new Error('Não há arquivos para empacotar.');
+  if (inputEntries.length > 65534) throw new Error('O pacote tem entradas demais para ZIP32.');
+  const encoder = new TextEncoder(); const localParts = []; const centralParts = [];
+  let localOffset = 0, centralSize = 0, totalSize = 0;
+  const seen = new Set();
+  for (let index = 0; index < inputEntries.length; index++) {
+    const entry = inputEntries[index];
+    const name = validateZipPath(entry.name);
+    if (seen.has(name)) throw new Error(`O pacote contém um caminho duplicado: ${name}`);
+    seen.add(name);
+    const nameBytes = encoder.encode(name);
+    if (!nameBytes.length || nameBytes.length > 65535) throw new Error('Um caminho do pacote excede o limite do formato ZIP.');
+    let data = entry.directory ? new Uint8Array() : await ZIP.read(state.file, entry);
+    if (data.byteLength !== entry.size) throw new Error(`Tamanho incorreto durante a reconstrução: ${name}`);
+    const actualCrc = crc32(data);
+    if (actualCrc !== entry.crc) throw new Error(`CRC-32 inválido em ${name}. A reconstrução foi interrompida.`);
+    totalSize += data.byteLength;
+    if (totalSize > EXPORT_LIMIT) throw new Error(`O conteúdo descompactado ultrapassa ${formatBytes(EXPORT_LIMIT)}. Exportação bloqueada para proteger a memória do iPhone.`);
+    if (localOffset > 0xffffffff || totalSize > 0xffffffff) throw new Error('O pacote excede os limites do formato ZIP32.');
+    const crc = actualCrc >>> 0;
+    const localHeader = writeZipLocalHeader(nameBytes, crc, data.byteLength, entry.modTime || 0, entry.modDate || 0);
+    const centralHeader = writeZipCentralHeader(entry, nameBytes, crc, data.byteLength, localOffset);
+    localParts.push(localHeader, data);
+    centralParts.push(centralHeader);
+    localOffset += localHeader.byteLength + data.byteLength;
+    centralSize += centralHeader.byteLength;
+    if (index === inputEntries.length - 1 || (index + 1) % 20 === 0) {
+      const label = kind === 'app' ? 'Extraindo bundle' : 'Reconstruindo IPA';
+      $('#fileStatus').textContent = `${label}: ${index + 1}/${inputEntries.length} entradas · ${formatBytes(totalSize)}`;
+      await new Promise(resolve => requestAnimationFrame(resolve));
+    }
+  }
+  const centralOffset = localOffset;
+  if (centralOffset + centralSize > 0xffffffff) throw new Error('O índice ZIP ultrapassa o limite do formato ZIP32.');
+  const end = new Uint8Array(22); const view = new DataView(end.buffer);
+  view.setUint32(0, 0x06054b50, true); view.setUint16(4, 0, true); view.setUint16(6, 0, true);
+  view.setUint16(8, inputEntries.length, true); view.setUint16(10, inputEntries.length, true);
+  view.setUint32(12, centralSize, true); view.setUint32(16, centralOffset, true); view.setUint16(20, 0, true);
+  return new Blob([...localParts, ...centralParts, end], { type: 'application/zip' });
+}
+async function shareOrDownload(blob, filename, title) {
+  const file = new File([blob], safeFileName(filename), { type: blob.type || 'application/octet-stream' });
+  try {
+    if (typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: title || file.name });
+      return;
+    }
+  } catch (error) {
+    if (error.name === 'AbortError') return;
+    console.warn('Native share unavailable; falling back to download:', error);
+  }
+  downloadBlob(blob, filename);
+  notify('Compartilhamento de arquivos indisponível: arquivo enviado para Downloads/Arquivos.');
+}
+
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = safeFileName(filename); anchor.style.display = 'none'; document.body.append(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
