@@ -29,6 +29,7 @@ jobs:
           node --check signature-engine.js
           node --check provisioning-engine.js
           node --check ota-engine.js
+          node --check ota-lab.js
           node --check feature-flags.js
       - name: Run ZIP engine tests
         run: node --test tests/*.test.cjs
@@ -44,6 +45,9 @@ jobs:
           test -f signature-engine.js
           test -f provisioning-engine.js
           test -f ota-engine.js
+          test -f ota-lab.html
+          test -f ota-lab.js
+          test -f ota-lab.css
           test -f feature-flags.js
           test -f LICENSE
           test -f tests/download-engine.test.cjs
@@ -53,3 +57,4 @@ jobs:
           test -f README.md
           test -f docs/ARCHITECTURE.md
           test -f docs/APPLE_DISTRIBUTION.md
+          test -f docs/OTA_LAB.md
