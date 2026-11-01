@@ -215,6 +215,14 @@
     window.location.assign(deepLink);
   });
 
+  function sanitizeObservedMessage(value) {
+    return String(value || '').slice(0, 400)
+      .replace(/(?:https?:\\/\\/|itms-services:\\/\\/)\\S+/gi, '[URL omitida]')
+      .replace(/\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b/gi, '[e-mail omitido]')
+      .replace(/\\b[0-9a-f]{40}\\b/gi, '[identificador omitido]')
+      .replace(/\\b(?:token|password|secret|api[_-]?key|authorization)\\s*[:=]\\s*\\S+/gi, '[credencial omitida]');
+  }
+
   function report() {
     const env = environment();
     return {
@@ -233,7 +241,7 @@
         otaRequestInitiated: state.requested,
         requestTime: state.requestTime,
         iosReportedOutcome: el('otaOutcome').value,
-        userObservedMessage: el('otaError').value.trim().slice(0, 400)
+        userObservedMessage: sanitizeObservedMessage(el('otaError').value.trim())
       },
       limitations: {
         appleSignatureVerified: false,
