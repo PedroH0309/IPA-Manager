@@ -128,3 +128,8 @@
   .provisioning-panel .signature-audit-heading button { width:100%; }
   .provisioning-panel .detail-line { align-items:start; gap:12px; }
 }
+
+/* OTA lab entry links */
+.ota-nav{text-decoration:none}
+.ota-home-link{display:inline-flex;align-items:center;padding:11px 14px;margin:2px 0 18px;border-radius:10px;border:1px solid #315477;background:#12253b;color:#8fcaff;font-size:12px;font-weight:600;text-decoration:none}
+.ota-home-link:hover{background:#19334e;border-color:#4c8cb9}
