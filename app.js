@@ -67,6 +67,7 @@ $('.notice-close')?.addEventListener('click', () => $('.notice')?.remove());
 // ZIP central-directory reader: supports stored (0) and Deflate (8), rejects encryption and Zip64.
 const { ZIP, crc32 } = window.IPAZipEngine;
 const { download: downloadRemoteArchive, validateDownloadUrl } = window.IPADownloadEngine;
+const { auditExecutable, limits: signatureAuditLimits } = window.IPASignatureEngine;
 
 // Apple binary/XML property-list decoder. Binary format supports common scalar, array and dictionary types.
 function parsePlist(bytes) {
@@ -164,6 +165,7 @@ async function inspectFile(file) {
   if (file.size > 700 * 1024 * 1024) { notify('Arquivo acima de 700 MB: análise bloqueada para proteger a memória do navegador móvel.'); return; }
   state.file = file; state.entries = []; state.info = null; state.appPrefix = ''; state.hash = ''; state.appBundleZip = null; state.appBundleName = ''; state.rebuiltIpa = null; state.rebuiltIpaName = '';
   $('#appExportPanel')?.classList.add('hidden'); $('#rebuiltPanel')?.classList.add('hidden');
+  $('#signatureAuditPanel').classList.add('hidden'); $('#signatureAuditStatus').textContent = 'Aguardando verificação'; $('#signatureAuditResults').textContent = '';
   $('#extractApp').disabled = true; $('#rebuildIpa').disabled = true;
   $('#filePanel').classList.remove('hidden'); $('#fileName').textContent = file.name; $('#fileSize').textContent = formatBytes(file.size);
   $('#metadataGrid').innerHTML = ''; $('#entryList').innerHTML = ''; $('#hashResult').classList.add('hidden'); $('#signatureCard').textContent = '';
@@ -199,6 +201,9 @@ async function inspectFile(file) {
     const hasSignatureBits = codeResources || embedded;
     $('#extractApp').disabled = false; $('#rebuildIpa').disabled = false;
     $('#signatureCard').innerHTML = `<strong>${hasSignatureBits ? 'Indicadores de assinatura encontrados' : 'Indicadores de assinatura não encontrados'}</strong><br>${codeResources ? '✓ _CodeSignature/CodeResources presente. ' : '— CodeResources ausente. '}${embedded ? '✓ embedded.mobileprovision presente.' : '— Perfil embedded.mobileprovision ausente.'}<br><span style="color:#748ba4">Isso não valida a assinatura criptográfica nem garante que o iOS aceite o pacote.</span>`;
+    $('#signatureAuditPanel').classList.remove('hidden');
+    $('#signatureAuditStatus').textContent = 'Pronto para examinar o executável principal';
+    $('#verifySignature').disabled = false;
     const record = { name: file.name, size: file.size, bundleId: info.CFBundleIdentifier || '', version: info.CFBundleShortVersionString || '', date: new Date().toISOString() };
     state.packages = [record, ...state.packages.filter(p => !(p.name === record.name && p.size === record.size))].slice(0, 50);
     logActivity(file.name, `${record.bundleId || 'Bundle ID não declarado'} · ${formatBytes(file.size)}`, 'file');
@@ -213,6 +218,86 @@ async function inspectFile(file) {
     notify('Não foi possível analisar este IPA.');
   }
 }
+
+$('#verifySignature').addEventListener('click', async () => {
+  const currentFile = state.file;
+  const prefix = state.appPrefix;
+  const executableName = state.info?.CFBundleExecutable;
+  const resultArea = $('#signatureAuditResults');
+  const status = $('#signatureAuditStatus');
+  const button = $('#verifySignature');
+
+  resultArea.textContent = '';
+  if (!currentFile || !prefix || !state.entries.length) {
+    status.textContent = 'Importe e analise um IPA antes da verificação.';
+    return;
+  }
+  if (typeof executableName !== 'string' || !/^[a-z0-9_.+-]+$/i.test(executableName) ||
+      executableName === '.' || executableName === '..') {
+    status.textContent = 'Info.plist não declara um executável com nome válido.';
+    return;
+  }
+  const mainPath = prefix + executableName;
+  const entry = state.entries.find(item => item.name === mainPath && !item.directory);
+  if (!entry) {
+    status.textContent = 'Executável principal não encontrado: ' + mainPath;
+    return;
+  }
+  if (entry.size > signatureAuditLimits.maxBinaryBytes) {
+    status.textContent = 'Executável excede 64 MiB. A auditoria local não foi executada.';
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = 'Verificando…';
+  status.textContent = 'Lendo o executável e os dados de assinatura…';
+  try {
+    const bytes = await ZIP.read(currentFile, entry);
+    if (state.file !== currentFile) return;
+    const result = await auditExecutable(bytes, {
+      onProgress: progress => {
+        if (state.file === currentFile) {
+          status.textContent = 'Comparando hashes: ' + progress.checked + '/' + progress.total + ' páginas…';
+        }
+      }
+    });
+    if (state.file !== currentFile) return;
+    const messages = {
+      match: 'Os hashes das páginas verificadas conferem com o CodeDirectory.',
+      mismatch: 'Falha de integridade: pelo menos uma página difere do hash registrado.',
+      unsigned: 'O executável não possui LC_CODE_SIGNATURE.',
+      unsupported: 'Formato de assinatura ou limite de páginas não suportado: análise inconclusiva.'
+    };
+    status.textContent = messages[result.status] || 'Auditoria inconclusiva.';
+    const rows = result.architectures.map(arch => {
+      const detail = arch.status === 'match' ? 'Hashes conferem' :
+        arch.status === 'mismatch' ? 'Hash divergente' :
+        arch.status === 'unsigned' ? 'Assinatura ausente' : 'Não verificado';
+      return '<div class="detail-line"><span>' + escapeHTML(arch.name) + '</span><b>' +
+        escapeHTML(detail) + '</b></div>' +
+        (arch.hashAlgorithm ? '<div class="detail-line"><span>Algoritmo</span><b>' +
+          escapeHTML(arch.hashAlgorithm) + '</b></div>' : '') +
+        '<div class="detail-line"><span>Páginas conferidas</span><b>' +
+        escapeHTML((arch.checkedSlots || 0) + '/' + (arch.codeSlots || 0)) + '</b></div>' +
+        (arch.cdhash ? '<div class="detail-line"><span>CDHash (20 bytes)</span><b class="signature-hash">' +
+          escapeHTML(arch.cdhash) + '</b></div>' : '');
+    });
+    resultArea.innerHTML = rows.join('') +
+      '<div class="detail-line"><span>Bloco CMS</span><b>' +
+      (result.cmsPresent ? 'Encontrado; NÃO validado' : 'Não encontrado em todas as arquiteturas') + '</b></div>' +
+      '<p class="signature-disclaimer">Auditoria diagnóstica do executável principal. Não valida a assinatura CMS, a cadeia de certificados Apple, o perfil de provisionamento, os recursos do bundle, frameworks nem a autorização de instalação.</p>';
+    logActivity('Auditoria CodeDirectory', (state.info.CFBundleIdentifier || 'App') + ' · ' + result.status, 'check');
+  } catch (error) {
+    if (state.file === currentFile) {
+      status.textContent = 'Auditoria inconclusiva: ' + error.message;
+      resultArea.textContent = 'Nenhuma aprovação de assinatura foi emitida.';
+    }
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Verificar integridade do executável';
+  }
+});
+
 $('#homeImport').addEventListener('click', () => { navigate('inspect'); $('#ipaFile').click(); });
 $('#chooseFile').addEventListener('click', () => $('#ipaFile').click());
 $('#ipaFile').addEventListener('change', event => { const file = event.target.files?.[0]; if (file) inspectFile(file); event.target.value = ''; });
@@ -276,7 +361,7 @@ $('#shareRebuiltIpa').addEventListener('click', async () => {
   if (state.rebuiltIpa) await shareOrDownload(state.rebuiltIpa, state.rebuiltIpaName, 'Reconstructed IPA');
 });
 
-$('#removeFile').addEventListener('click', () => { state.file = null; state.entries = []; state.info = null; state.appPrefix = ''; state.appBundleZip = null; state.rebuiltIpa = null; $('#appExportPanel').classList.add('hidden'); $('#rebuiltPanel').classList.add('hidden'); $('#filePanel').classList.add('hidden'); $('#extractApp').disabled = true; $('#rebuildIpa').disabled = true; $('#progressBar').style.background = '#54a9ff'; notify('Arquivo removido da sessão.'); });
+$('#removeFile').addEventListener('click', () => { state.file = null; state.entries = []; state.info = null; state.appPrefix = ''; state.appBundleZip = null; state.rebuiltIpa = null; $('#appExportPanel').classList.add('hidden'); $('#rebuiltPanel').classList.add('hidden'); $('#signatureAuditPanel').classList.add('hidden'); $('#filePanel').classList.add('hidden'); $('#extractApp').disabled = true; $('#rebuildIpa').disabled = true; $('#progressBar').style.background = '#54a9ff'; notify('Arquivo removido da sessão.'); });
 const dropzone = $('#dropzone');
 dropzone.addEventListener('dragover', event => { event.preventDefault(); dropzone.classList.add('dragging'); });
 dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragging'));
