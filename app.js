@@ -83,7 +83,7 @@ function parsePlist(bytes) {
 }
 function parseXmlNode(node) {
   switch (node.tagName) {
-    case 'dict': { const obj = {}; const children = [...node.children]; for (let i = 0; i < children.length; i += 2) { if (children[i]?.tagName !== 'key' || !children[i + 1]) continue; obj[children[i].textContent] = parseXmlNode(children[i + 1]); } return obj; }
+    case 'dict': { const obj = Object.create(null); const children = [...node.children]; for (let i = 0; i < children.length; i += 2) { if (children[i]?.tagName !== 'key' || !children[i + 1]) continue; obj[children[i].textContent] = parseXmlNode(children[i + 1]); } return obj; }
     case 'array': return [...node.children].map(parseXmlNode);
     case 'string': case 'key': return node.textContent || '';
     case 'integer': return Number(node.textContent);
@@ -135,7 +135,7 @@ function parseBinaryPlist(bytes) {
         const refs=[]; for(let i=0;i<refCount;i++) refs.push(Number(readUnsigned(cursor+i*refSize, refSize)));
         let result;
         if (type === 10) result = refs.map(ref => parseObject(ref, depth+1));
-        else { result={}; for(let i=0;i<length;i++){const key=parseObject(refs[i],depth+1);const val=parseObject(refs[length+i],depth+1);result[String(key)]=val;} }
+        else { result=Object.create(null); for(let i=0;i<length;i++){const key=parseObject(refs[i],depth+1);const val=parseObject(refs[length+i],depth+1);result[String(key)]=val;} }
         active.delete(index); return result;
       }
       default: return null;
