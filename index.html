@@ -29,7 +29,7 @@
       <button class="nav-item" data-view="catalog"><span class="nav-icon">◈</span> Catálogo</button>
       <button class="nav-item" data-view="sources"><span class="nav-icon">◎</span> Fontes</button>
       <button class="nav-item" data-view="library"><span class="nav-icon">▣</span> Biblioteca</button>
-      <div class="sidebar-bottom"><div class="side-note"><span class="shield">✓</span><div><b>Privacidade primeiro</b><small>Os arquivos selecionados são processados no navegador. Não enviamos IPA para nossos servidores.</small></div></div><span class="version">IPA Manager · Preview 0.5.0</span></div>
+      <div class="sidebar-bottom"><div class="side-note"><span class="shield">✓</span><div><b>Privacidade primeiro</b><small>Os arquivos selecionados são processados no navegador. Não enviamos IPA para nossos servidores.</small></div></div><span class="version">IPA Manager · Preview 0.5.1</span></div>
     </aside>
 
     <section class="content">
@@ -37,7 +37,9 @@
         <div class="download-panel-head"><div><strong id="downloadTitle">Download de pacote</strong><small id="downloadStatus">Aguardando uma transferência.</small></div><button class="text-button danger-text hidden" id="cancelDownload" type="button">Cancelar</button></div>
         <progress id="downloadProgress" max="100" value="0" aria-label="Progresso do download"></progress>
         <div class="download-panel-actions"><button class="secondary-button hidden" id="saveDownloadedFile" type="button">Salvar em Arquivos</button><button class="primary-button hidden" id="shareDownloadedFile" type="button">Compartilhar</button></div>
-        <div class="download-panel-foot"><small id="downloadBytes">0 B</small><a id="directDownloadLink" class="text-button hidden" target="_blank" rel="noopener noreferrer">Abrir download direto ↗</a></div>
+        <div class="download-panel-foot"><small id="downloadBytes">0 B</small><a id="directDownloadLink" class="text-button hidden" target="_blank" rel="noopener noreferrer">Baixar pelo Safari ↗</a></div>
+        <p class="download-tip">O Safari pode baixar o IPA mesmo quando o servidor bloqueia a leitura por JavaScript. Após salvar, importe-o pelo app Arquivos para analisar.</p>
+        <button class="secondary-button" id="importDownloadedFile" type="button">Importar IPA salvo</button>
       </div>
       <section class="view active" id="view-home">
         <div class="eyebrow">CENTRAL DE APLICATIVOS IOS</div>
