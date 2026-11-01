@@ -8,7 +8,7 @@ IPA Manager helps users understand the structure and metadata of an iOS applicat
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![PWA](https://img.shields.io/badge/PWA-Static%20Web%20App-6f42c1)
-![Status](https://img.shields.io/badge/status-preview%200.4.0-orange)
+![Status](https://img.shields.io/badge/status-preview%200.5.0-orange)
 ![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20modern%20browsers-lightgrey)
 
 ## Project status
@@ -25,6 +25,7 @@ The current codebase is a dependency-free static PWA built with HTML, CSS, and v
 | IPA container rebuilding | Implemented |
 | GitHub releases and AltStore JSON catalog import | Implemented |
 | Bounded ZIP decompression and structural checks | Implemented in Preview 0.4.0 |
+| Remote IPA/ZIP downloads with progress and cancellation | Implemented in Preview 0.5.0 |
 | Web Workers and IndexedDB migration | Planned |
 | Native SwiftUI / WebKit shell | Planned |
 | MarketplaceKit / AppLibrary integration | Disabled; requires Apple authorization |
@@ -33,6 +34,7 @@ The current codebase is a dependency-free static PWA built with HTML, CSS, and v
 ## Features
 
 - **Local import:** Select IPA files through the browser's file picker.
+- **Remote downloads:** Download public IPA/ZIP URLs over HTTPS with progress reporting, cancellation, a 500 MiB transfer cap, and ZIP signature checks. A direct browser link is offered when the host blocks JavaScript access through CORS.
 - **ZIP parser:** Read STORE and Deflate entries using the ZIP central directory.
 - **Bounded decompression:** Enforce per-entry and total expansion limits while streaming decompressed data.
 - **Path validation:** Reject absolute paths, traversal segments, backslash paths, duplicate paths, and unsupported encryption.
@@ -52,7 +54,7 @@ The current codebase is a dependency-free static PWA built with HTML, CSS, and v
 | Layer | Current implementation | Planned evolution |
 |---|---|---|
 | Web interface | HTML5, CSS3, vanilla JavaScript | React, TypeScript, Vite, Tailwind CSS |
-| IPA engine | Dedicated JavaScript ZIP engine | Web Workers and typed engine interfaces |
+| IPA engine | Dedicated JavaScript ZIP and download engines | Web Workers and typed engine interfaces |
 | Local data | localStorage | IndexedDB |
 | Offline support | Service Worker, Web App Manifest | Retain PWA shell |
 | Native iOS | Not started | Swift, SwiftUI, WebKit |
@@ -62,7 +64,7 @@ The current codebase is a dependency-free static PWA built with HTML, CSS, and v
 | File storage | Local Blob/File APIs | S3-compatible object storage and CDN |
 | License delivery | Not implemented | Apple App License Delivery SDK on Swift server |
 
-The current static application has no paid API dependencies, package installation step, or backend requirement.
+The current static application has no paid API dependencies, package installation step, or backend requirement. Remote in-app downloads depend on the remote host allowing cross-origin reads (CORS); when it does not, the app exposes the host's direct download link instead.
 
 ## Requirements
 
@@ -70,7 +72,7 @@ The current static application has no paid API dependencies, package installatio
 - HTTPS for PWA installation, service workers, and secure browser APIs. localhost is supported for development.
 - On iPhone, a recent Safari version and the iOS Files app for selecting and saving packages.
 
-The ZIP engine currently limits a single read to 250 MiB and the declared total uncompressed archive size to 2 GiB. The export writer has its own lower memory budget.
+The ZIP engine currently limits a single read to 250 MiB and the declared total uncompressed archive size to 2 GiB. Remote downloads are limited to 500 MiB and assembled into a browser Blob, so large transfers may still require substantial memory. The export writer has its own lower memory budget.
 
 ## Run locally
 
@@ -117,7 +119,7 @@ Keep manifest.webmanifest, sw.js, zip-engine.js, feature-flags.js, and the icon 
 
 ## Workflow
 
-1. Import an original .ipa.
+1. Import an original .ipa, or download a public IPA/ZIP from GitHub releases or a compatible source.
 2. Review metadata and the archive tree.
 3. Inspect individual files or calculate SHA-256.
 4. Export the .app bundle as a ZIP, or rebuild the original IPA container.
@@ -161,6 +163,7 @@ Apple currently requires Brazil marketplace operators to enroll in the Apple Dev
 
 - ZIP64, multi-volume ZIP archives, and encrypted entries are unsupported.
 - The application import limit is 700 MiB.
+- Remote downloads are limited to 500 MiB per file and require CORS for in-app progress and ZIP validation; a direct browser link is provided when CORS blocks the transfer.
 - Single-entry reads are limited to 250 MiB.
 - Declared total uncompressed size is limited to 2 GiB.
 - Export/rebuild uses a ZIP32 writer with STORE compression and a 400 MiB aggregate output budget.
@@ -184,9 +187,11 @@ Apple currently requires Brazil marketplace operators to enroll in the Apple Dev
 │   ├── APPLE_DISTRIBUTION.md
 │   └── ARCHITECTURE.md
 ├── tests/
-│   └── zip-engine.test.cjs
+│   ├── zip-engine.test.cjs
+│   └── download-engine.test.cjs
 ├── app.js
 ├── zip-engine.js
+├── download-engine.js
 ├── feature-flags.js
 ├── index.html
 ├── styles.css
