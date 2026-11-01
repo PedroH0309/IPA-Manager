@@ -66,6 +66,7 @@ $('.notice-close')?.addEventListener('click', () => $('.notice')?.remove());
 
 // ZIP central-directory reader: supports stored (0) and Deflate (8), rejects encryption and Zip64.
 const { ZIP, crc32 } = window.IPAZipEngine;
+const { download: downloadRemoteArchive, validateDownloadUrl } = window.IPADownloadEngine;
 
 // Apple binary/XML property-list decoder. Binary format supports common scalar, array and dictionary types.
 function parsePlist(bytes) {
@@ -465,7 +466,13 @@ async function searchRepo(repo) {
     if (!Array.isArray(releases) || !releases.length) { $('#releaseResults').innerHTML = '<div class="empty-state"><b>Nenhuma release publicada</b><small>Este repositório não possui releases públicas.</small></div>'; return; }
     $('#releaseResults').innerHTML = releases.map((release,index) => {
       const assets = (release.assets || []).filter(asset => /\.(ipa|zip)$/i.test(asset.name));
-      return `<article class="release-card"><div class="release-top"><div class="release-title"><b>${escapeHTML(release.name || release.tag_name)}</b><small>${escapeHTML(repo)} · ${escapeHTML(release.tag_name)} · ${release.published_at ? new Date(release.published_at).toLocaleDateString('pt-BR') : 'Data não informada'}${release.prerelease ? ' · Pré-lançamento' : ''}</small></div><span class="release-badge">${assets.length} pacote(s)</span></div>${release.body ? `<p style="font-size:10px;color:#8a9bb0;line-height:1.6;max-height:55px;overflow:hidden">${escapeHTML(release.body.slice(0,260))}${release.body.length>260?'…':''}</p>` : ''}<div class="asset-list">${assets.length ? assets.map(asset => `<div class="asset-row"><b>${escapeHTML(asset.name)}</b><small>${formatBytes(asset.size)}</small><a href="${escapeHTML(asset.browser_download_url)}" target="_blank" rel="noopener">Baixar ↗</a></div>`).join('') : '<small style="color:#71859e;font-size:10px">Nenhum arquivo IPA/ZIP nesta release.</small>'}</div></article>`;
+      const assetMarkup = assets.length ? assets.map(asset => {
+        const downloadUrl = safeDownloadUrl(asset.browser_download_url);
+        const direct = downloadUrl ? '<a href="' + escapeHTML(downloadUrl) + '" target="_blank" rel="noopener noreferrer">Link direto ↗</a>' : '<span class="hint">URL indisponível</span>';
+        const button = downloadUrl ? '<button type="button" class="secondary-button" data-download-url="' + escapeHTML(downloadUrl) + '" data-download-name="' + escapeHTML(asset.name) + '">Baixar no IPA Manager</button>' : '';
+        return '<div class="asset-row"><b>' + escapeHTML(asset.name) + '</b><small>' + formatBytes(asset.size) + '</small><div class="asset-actions">' + button + direct + '</div></div>';
+      }).join('') : '<small style="color:#71859e;font-size:10px">Nenhum arquivo IPA/ZIP nesta release.</small>';
+      return '<article class="release-card"><div class="release-top"><div class="release-title"><b>' + escapeHTML(release.name || release.tag_name) + '</b><small>' + escapeHTML(repo) + ' · ' + escapeHTML(release.tag_name) + ' · ' + (release.published_at ? new Date(release.published_at).toLocaleDateString('pt-BR') : 'Data não informada') + (release.prerelease ? ' · Pré-lançamento' : '') + '</small></div><span class="release-badge">' + assets.length + ' pacote(s)</span></div>' + (release.body ? '<p style="font-size:10px;color:#8a9bb0;line-height:1.6;max-height:55px;overflow:hidden">' + escapeHTML(release.body.slice(0,260)) + (release.body.length > 260 ? '…' : '') + '</p>' : '') + '<div class="asset-list">' + assetMarkup + '</div></article>';
     }).join('');
     logActivity('Consulta GitHub', `${repo} · ${releases.length} releases`, 'source');
   } catch (error) {
@@ -496,6 +503,65 @@ async function addSource(url) {
   } catch (error) { notify(error.message || 'Não foi possível ler o catálogo.'); }
 }
 function safeHttps(value) { try { const url = new URL(value); return url.protocol === 'https:' ? url.href : ''; } catch { return ''; } }
+function safeDownloadUrl(value) { try { return validateDownloadUrl(value); } catch { return ''; } }
+let activeDownloadController = null;
+function updateDownloadProgress(progress) {
+  const bar = $('#downloadProgress');
+  if (progress.total && progress.percent !== null) { bar.max = 100; bar.value = Math.max(0, Math.min(100, progress.percent)); }
+  else bar.removeAttribute('value');
+  $('#downloadBytes').textContent = progress.total ? formatBytes(progress.loaded) + ' / ' + formatBytes(progress.total) : formatBytes(progress.loaded) + ' recebidos';
+}
+async function startRemoteDownload(url, filename) {
+  const safeUrl = safeDownloadUrl(url);
+  if (!safeUrl) { notify('O endereço de download não passou pela validação HTTPS.'); return; }
+  if (activeDownloadController) { notify('Já existe um download em andamento.'); return; }
+  const controller = new AbortController();
+  activeDownloadController = controller;
+  const panel = $('#downloadPanel');
+  const progress = $('#downloadProgress');
+  const cancel = $('#cancelDownload');
+  const directLink = $('#directDownloadLink');
+  panel.classList.remove('hidden');
+  $('#downloadTitle').textContent = 'Preparando download';
+  $('#downloadStatus').textContent = 'Conectando ao servidor e verificando o pacote…';
+  $('#downloadBytes').textContent = '0 B';
+  progress.max = 100; progress.value = 0;
+  cancel.classList.remove('hidden'); cancel.disabled = false;
+  directLink.href = safeUrl; directLink.classList.add('hidden');
+  try {
+    const result = await downloadRemoteArchive(safeUrl, { signal: controller.signal, onProgress: updateDownloadProgress });
+    const safeName = safeFileName(filename || 'application.ipa');
+    downloadBlob(result.blob, safeName);
+    $('#downloadTitle').textContent = 'Download concluído';
+    $('#downloadStatus').textContent = safeName + ' foi recebido e passou pela verificação da assinatura ZIP.';
+    $('#downloadBytes').textContent = formatBytes(result.bytes);
+    progress.max = 100; progress.value = 100;
+    directLink.classList.add('hidden');
+    logActivity('Download concluído', safeName + ' · ' + formatBytes(result.bytes), 'download');
+    notify('Download concluído. Confira Downloads/Arquivos.');
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      $('#downloadTitle').textContent = 'Download cancelado';
+      $('#downloadStatus').textContent = 'A transferência foi interrompida. Nenhum arquivo foi salvo.';
+      notify('Download cancelado.');
+    } else {
+      $('#downloadTitle').textContent = 'Não foi possível baixar pelo IPA Manager';
+      $('#downloadStatus').textContent = error.message || 'Falha durante o download.';
+      directLink.textContent = 'Tentar download direto ↗'; directLink.classList.remove('hidden');
+      notify('Download interno indisponível. Você pode tentar o link direto.');
+    }
+  } finally {
+    if (activeDownloadController === controller) activeDownloadController = null;
+    cancel.classList.add('hidden'); cancel.disabled = false;
+  }
+}
+$('#cancelDownload').addEventListener('click', () => { if (activeDownloadController) activeDownloadController.abort(); });
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-download-url]');
+  if (!button || button.disabled) return;
+  event.preventDefault();
+  startRemoteDownload(button.dataset.downloadUrl, button.dataset.downloadName);
+});
 
 $('#addSource').addEventListener('click', () => addSource($('#sourceUrl').value.trim()));
 $('#sourceUrl').addEventListener('keydown', event => { if (event.key === 'Enter') $('#addSource').click(); });
@@ -511,7 +577,11 @@ function renderSourceApps(source) {
   if (!source.apps.length) return '<p class="hint">Esta fonte não lista aplicativos.</p>';
   return source.apps.map((app, appIndex) => {
     const version = app.versions[0] || {};
-    return `<div class="library-row"><div class="row-details"><b>${escapeHTML(app.name)}</b><small>${escapeHTML(app.developerName)} · ${escapeHTML(version.version || 'Versão não informada')} · ${formatBytes(version.size)}</small><small>${escapeHTML(app.bundleIdentifier)}</small></div>${version.downloadURL ? `<a class="secondary-button" style="text-decoration:none" target="_blank" rel="noopener" href="${escapeHTML(version.downloadURL)}">Baixar IPA</a>` : '<span class="hint">Sem download</span>'}<button class="text-button" data-version-info="${appIndex}">Detalhes</button></div><div class="hint" style="margin:0 0 12px">${version.sha256 ? `SHA-256 publicado: ${escapeHTML(version.sha256)}` : 'Esta versão não publica hash SHA-256.'} ${version.minOSVersion ? `· iOS mínimo declarado ${escapeHTML(version.minOSVersion)}` : ''}</div>`;
+    const downloadUrl = safeDownloadUrl(version.downloadURL);
+    const downloadName = safeFileName(app.name + '-' + (version.version || 'latest') + '.ipa');
+    const downloadButton = downloadUrl ? '<button type="button" class="secondary-button" data-download-url="' + escapeHTML(downloadUrl) + '" data-download-name="' + escapeHTML(downloadName) + '">Baixar no IPA Manager</button><a class="text-button" target="_blank" rel="noopener noreferrer" href="' + escapeHTML(downloadUrl) + '">Link direto ↗</a>' : '<span class="hint">Download indisponível</span>';
+    const versionDetails = (version.sha256 ? 'SHA-256 publicado: ' + escapeHTML(version.sha256) : 'Esta versão não publica hash SHA-256.') + (version.minOSVersion ? ' · iOS mínimo declarado ' + escapeHTML(version.minOSVersion) : '');
+    return '<div class="library-row"><div class="row-details"><b>' + escapeHTML(app.name) + '</b><small>' + escapeHTML(app.developerName) + ' · ' + escapeHTML(version.version || 'Versão não informada') + ' · ' + formatBytes(version.size) + '</small><small>' + escapeHTML(app.bundleIdentifier) + '</small></div>' + downloadButton + '<button class="text-button" data-version-info="' + appIndex + '">Detalhes</button></div><div class="hint" style="margin:0 0 12px">' + versionDetails + '</div>';
   }).join('');
 }
 function bindSourceActions(panel, sourceIndex) {
