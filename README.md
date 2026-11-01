@@ -8,7 +8,7 @@ IPA Manager helps users understand the structure and metadata of an iOS applicat
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![PWA](https://img.shields.io/badge/PWA-Static%20Web%20App-6f42c1)
-![Status](https://img.shields.io/badge/status-preview%200.5.1-orange)
+![Status](https://img.shields.io/badge/status-preview%200.6.0-orange)
 ![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20modern%20browsers-lightgrey)
 
 ## Project status
@@ -26,6 +26,7 @@ The current codebase is a dependency-free static PWA built with HTML, CSS, and v
 | GitHub releases and AltStore JSON catalog import | Implemented |
 | Bounded ZIP decompression and structural checks | Implemented in Preview 0.4.0 |
 | Remote IPA/ZIP downloads with progress and cancellation | Implemented in Preview 0.5.0 |
+| Executable CodeDirectory page-hash audit | Implemented in Preview 0.6.0; not Apple signature trust verification |
 | Web Workers and IndexedDB migration | Planned |
 | Native SwiftUI / WebKit shell | Planned |
 | MarketplaceKit / AppLibrary integration | Disabled; requires Apple authorization |
@@ -43,7 +44,8 @@ The current codebase is a dependency-free static PWA built with HTML, CSS, and v
 - **App bundle export:** Create a ZIP containing the complete application bundle directory.
 - **IPA rebuilding:** Rebuild a ZIP32 container from original entries and verify entry CRC-32 values.
 - **Integrity tools:** Calculate SHA-256 for supported files and compare against a trusted reference.
-- **Signature indicators:** Detect common signature-related files without claiming cryptographic validation.
+- **Signature indicators:** Detect common signature-related files.
+- **Executable integrity audit:** Inspect the primary Mach-O CodeDirectory and compare SHA-256/SHA-384 page hashes using Web Crypto. Detect modified code pages, unsigned executables, a CMS blob indicator and the CDHash fingerprint. It does not authenticate the CMS blob, Apple certificates, resource seal, provisioning profile, nested frameworks, or iOS installability.
 - **GitHub releases:** Browse public repository releases and IPA/ZIP assets.
 - **AltStore catalog import:** Read public AltStore-compatible JSON sources over HTTPS.
 - **Local history:** Save operation metadata in browser storage.
@@ -156,6 +158,12 @@ Official Apple documentation:
 
 Apple currently requires Brazil marketplace operators to enroll in the Apple Developer Program as an organization and satisfy additional eligibility and ongoing operational requirements. See Apple's current Brazil requirements before pursuing entitlement approval.
 
+## Executable signature diagnostic (Preview 0.6.0)
+
+Open **Inspect IPA**, import a package, and select **Verify executable integrity** (Portuguese UI: *Verificar integridade do executável*). The app reads `CFBundleExecutable` from `Info.plist`, extracts the main executable and inspects `LC_CODE_SIGNATURE`. For supported thin or universal Mach-O slices, it compares the primary CodeDirectory's SHA-256/SHA-384 page hashes with the executable's bytes. A mismatch indicates local code-page tampering or a malformed seal.
+
+A match does **not** establish signer identity, certificate validity, profile eligibility, notarization, resource-seal integrity, nested-code integrity, or installation authorization. A CMS blob's presence is only reported, not verified. This parser is a bounded diagnostic implementation and is not Apple's code-signing verification API. Apple's signed formats may change. See [Apple TN3126](https://developer.apple.com/documentation/technotes/tn3126-inside-code-signing-hashes).
+
 ## Security boundaries
 
 - Selected IPA files are processed locally during inspection and export.
@@ -176,8 +184,9 @@ Apple currently requires Brazil marketplace operators to enroll in the Apple Dev
 - Export/rebuild uses a ZIP32 writer with STORE compression and a 400 MiB aggregate output budget.
 - The writer does not preserve arbitrary ZIP extra fields, archive comments, or original compression methods.
 - SHA-256 is limited to 300 MiB in the current interface.
+- The experimental Mach-O CodeDirectory audit is limited to 64 MiB of extracted executable data and 8192 code pages; alternate CodeDirectories, nested libraries, special hash slots, CMS cryptography and Apple trust decisions are not verified.
 - Binary plist support covers common scalar, array, and dictionary types; it is not a complete Apple forensic plist implementation.
-- Signature indicators are not cryptographic signature verification.
+- Signature indicators and CodeDirectory page-hash checks are not CMS/certificate-chain verification. A matching CodeDirectory is not proof that Apple will trust or install an app.
 - The PWA does not enumerate installed iOS apps or update them.
 
 ## Project structure
@@ -195,9 +204,11 @@ Apple currently requires Brazil marketplace operators to enroll in the Apple Dev
 │   └── ARCHITECTURE.md
 ├── tests/
 │   ├── zip-engine.test.cjs
-│   └── download-engine.test.cjs
+│   ├── download-engine.test.cjs
+│   └── signature-engine.test.cjs
 ├── app.js
 ├── zip-engine.js
+├── signature-engine.js
 ├── download-engine.js
 ├── feature-flags.js
 ├── index.html
