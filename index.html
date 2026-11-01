@@ -29,10 +29,15 @@
       <button class="nav-item" data-view="catalog"><span class="nav-icon">◈</span> Catálogo</button>
       <button class="nav-item" data-view="sources"><span class="nav-icon">◎</span> Fontes</button>
       <button class="nav-item" data-view="library"><span class="nav-icon">▣</span> Biblioteca</button>
-      <div class="sidebar-bottom"><div class="side-note"><span class="shield">✓</span><div><b>Privacidade primeiro</b><small>Os arquivos selecionados são processados no navegador. Não enviamos IPA para nossos servidores.</small></div></div><span class="version">IPA Manager · Preview 0.2.0</span></div>
+      <div class="sidebar-bottom"><div class="side-note"><span class="shield">✓</span><div><b>Privacidade primeiro</b><small>Os arquivos selecionados são processados no navegador. Não enviamos IPA para nossos servidores.</small></div></div><span class="version">IPA Manager · Preview 0.5.0</span></div>
     </aside>
 
     <section class="content">
+      <div class="download-panel hidden" id="downloadPanel" aria-live="polite">
+        <div class="download-panel-head"><div><strong id="downloadTitle">Download de pacote</strong><small id="downloadStatus">Aguardando uma transferência.</small></div><button class="text-button danger-text hidden" id="cancelDownload" type="button">Cancelar</button></div>
+        <progress id="downloadProgress" max="100" value="0" aria-label="Progresso do download"></progress>
+        <div class="download-panel-foot"><small id="downloadBytes">0 B</small><a id="directDownloadLink" class="text-button hidden" target="_blank" rel="noopener noreferrer">Abrir download direto ↗</a></div>
+      </div>
       <section class="view active" id="view-home">
         <div class="eyebrow">CENTRAL DE APLICATIVOS IOS</div>
         <div class="hero-row"><div><h1>Seus pacotes.<br><em>Controle total.</em></h1><p class="hero-copy">Baixe, analise e organize arquivos IPA. A instalação segue os mecanismos de distribuição autorizados pelo iOS.</p></div><div class="hero-orbit" aria-hidden="true"><div class="orbit-ring"></div><div class="orbit-core">IPA</div><span class="orbit-node node-one">↓</span><span class="orbit-node node-two">✓</span><span class="orbit-node node-three">⌘</span></div></div>
@@ -125,6 +130,7 @@
   <dialog id="entryDialog" class="modal"><form method="dialog"><div class="modal-head"><div><span class="eyebrow">ARQUIVO DO IPA</span><h2 id="entryTitle">Detalhes do arquivo</h2></div><button class="icon-button" aria-label="Fechar">×</button></div><div id="entryDetails" class="modal-body"></div><div class="modal-actions"><button class="secondary-button" value="cancel">Fechar</button><button type="button" class="primary-button" id="downloadEntry">Exportar arquivo</button><button type="button" class="primary-button hidden" id="shareEntry">Compartilhar</button></div></form></dialog>
   <footer class="footer"><span>IPA MANAGER</span><span>Feito para análise local e distribuição responsável.</span></footer>
   <script src="zip-engine.js" defer></script>
+  <script src="download-engine.js" defer></script>
   <script src="feature-flags.js" defer></script>
   <script src="app.js" defer></script>
 </body>
