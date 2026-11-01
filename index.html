@@ -29,7 +29,7 @@
       <button class="nav-item" data-view="catalog"><span class="nav-icon">◈</span> Catálogo</button>
       <button class="nav-item" data-view="sources"><span class="nav-icon">◎</span> Fontes</button>
       <button class="nav-item" data-view="library"><span class="nav-icon">▣</span> Biblioteca</button>
-      <div class="sidebar-bottom"><div class="side-note"><span class="shield">✓</span><div><b>Privacidade primeiro</b><small>Os arquivos selecionados são processados no navegador. Não enviamos IPA para nossos servidores.</small></div></div><span class="version">IPA Manager · Preview 0.5.1</span></div>
+      <div class="sidebar-bottom"><div class="side-note"><span class="shield">✓</span><div><b>Privacidade primeiro</b><small>Os arquivos selecionados são processados no navegador. Não enviamos IPA para nossos servidores.</small></div></div><span class="version">IPA Manager · Preview 0.6.0</span></div>
     </aside>
 
     <section class="content">
@@ -89,6 +89,12 @@
           <div class="verify-row"><div><b>Integridade SHA-256</b><small>Calcule o hash completo do IPA e compare com um valor conhecido.</small></div><button class="secondary-button" id="hashButton">Calcular hash</button></div>
           <div class="hash-result hidden" id="hashResult"><span>SHA-256</span><code id="hashValue"></code><button class="text-button" id="copyHash">Copiar</button></div>
           <div class="signature-card" id="signatureCard"></div>
+          <section class="signature-card signature-audit hidden" id="signatureAuditPanel" aria-labelledby="signatureAuditHeading">
+            <div class="signature-audit-heading"><div><strong id="signatureAuditHeading">Integridade da assinatura do executável</strong><small>Auditoria local de páginas Mach-O / CodeDirectory</small></div><button id="verifySignature" type="button" class="secondary-button">Verificar integridade do executável</button></div>
+            <p class="signature-audit-status" id="signatureAuditStatus" role="status">Aguardando verificação</p>
+            <div id="signatureAuditResults"></div>
+            <p class="signature-disclaimer">Não substitui validação de CMS, certificados Apple, perfis ou verificação pelo iOS. Hashes conferindo não provam que um IPA pode ser instalado.</p>
+          </section>
         </div>
         <div class="section-heading"><div><span class="eyebrow">RECURSOS</span><h2>O que a análise consegue confirmar</h2></div></div>
         <div class="capability-grid"><div><span>01</span><b>Estrutura ZIP</b><small>Diretórios, caminhos, tamanhos e métodos de compressão.</small></div><div><span>02</span><b>Metadados</b><small>Bundle ID, versão, nome e versão mínima do iOS.</small></div><div><span>03</span><b>Indicadores</b><small>Presença de arquivos de assinatura e perfil de provisionamento.</small></div><div><span>04</span><b>Integridade</b><small>SHA-256 e CRC dos arquivos que forem lidos.</small></div></div>
@@ -134,6 +140,7 @@
   <footer class="footer"><span>IPA MANAGER</span><span>Feito para análise local e distribuição responsável.</span></footer>
   <script src="zip-engine.js" defer></script>
   <script src="download-engine.js" defer></script>
+  <script src="signature-engine.js" defer></script>
   <script src="feature-flags.js" defer></script>
   <script src="app.js" defer></script>
 </body>
