@@ -26,6 +26,7 @@ jobs:
           node --check app.js
           node --check zip-engine.js
           node --check download-engine.js
+          node --check signature-engine.js
           node --check feature-flags.js
       - name: Run ZIP engine tests
         run: node --test tests/*.test.cjs
@@ -38,9 +39,11 @@ jobs:
           test -f sw.js
           test -f zip-engine.js
           test -f download-engine.js
+          test -f signature-engine.js
           test -f feature-flags.js
           test -f LICENSE
           test -f tests/download-engine.test.cjs
+          test -f tests/signature-engine.test.cjs
           test -f README.md
           test -f docs/ARCHITECTURE.md
           test -f docs/APPLE_DISTRIBUTION.md
