@@ -28,6 +28,7 @@ The current codebase is a dependency-free static PWA built with HTML, CSS, and v
 | Remote IPA/ZIP downloads with progress and cancellation | Implemented in Preview 0.5.0 |
 | Executable CodeDirectory page-hash audit | Implemented in Preview 0.6.0; not Apple signature trust verification |
 | Provisioning metadata diagnostics and safe JSON export | Implemented in Preview 0.7.0; no Apple account needed |
+| OTA manifest research engine (generation and URL checks) | Module and tests implemented; not yet exposed as a public installation UI; does not bypass iOS signing |
 | Web Workers and IndexedDB migration | Planned |
 | Native SwiftUI / WebKit shell | Planned |
 | MarketplaceKit / AppLibrary integration | Disabled; requires Apple authorization |
@@ -46,6 +47,7 @@ The current codebase is a dependency-free static PWA built with HTML, CSS, and v
 - **IPA rebuilding:** Rebuild a ZIP32 container from original entries and verify entry CRC-32 values.
 - **Integrity tools:** Calculate SHA-256 for supported files and compare against a trusted reference.
 - **Signature indicators:** Detect common signature-related files.
+- **OTA experiment (research):** `ota-engine.js` constructs an XML manifest for a separately hosted, already eligible IPA and builds an `itms-services` request from a hosted manifest URL. This is not a signing service, installer, or CoreTrust bypass. The module currently has automated tests but no end-user interface. A successful installation has not been demonstrated on a real iPhone.
 - **Provisioning diagnostics:** Locally extract an XML plist payload from the main bundle's `embedded.mobileprovision` (when present), display declared expiry, probable profile category, bundle identifier compatibility, and device-list counts without exposing UDIDs or certificate payloads. Export a sanitized JSON report. A CMS payload is **not** cryptographically verified.
 - **Executable integrity audit:** Inspect the primary Mach-O CodeDirectory and compare SHA-256/SHA-384 page hashes using Web Crypto. Detect modified code pages, unsigned executables, a CMS blob indicator and the CDHash fingerprint. It does not authenticate the CMS blob, Apple certificates, resource seal, provisioning profile, nested frameworks, or iOS installability.
 - **GitHub releases:** Browse public repository releases and IPA/ZIP assets.
