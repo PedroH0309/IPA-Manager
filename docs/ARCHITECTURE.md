@@ -12,6 +12,7 @@ The current repository is not yet a React/Vite application, does not contain a b
 - styles.css: responsive visual system.
 - app.js: UI state, application workflows, plist decoding, catalog and release browsing, local library.
 - zip-engine.js: ZIP central-directory parsing, bounded entry reading, path validation, and CRC-32.
+- provisioning-engine.js: bounded extraction of XML plist payloads from embedded provisioning profiles and privacy-preserving metadata diagnostics.
 - download-engine.js: HTTPS-only public archive downloads, streamed size enforcement, cancellation, progress callbacks, and ZIP signature checks.
 - feature-flags.js: default-off distribution capability flags.
 - sw.js: PWA shell cache.
