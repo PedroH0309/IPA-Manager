@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980" role="img" aria-labelledby="title desc">
+  <title id="title">IPA Manager interface preview</title>
+  <desc id="desc">Illustrative dark desktop interface with navigation, a selected IPA package, application metadata, archive entries and installation hand-off tools.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#080d16"/><stop offset="1" stop-color="#0d1725"/></linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#61b5ff"/><stop offset="1" stop-color="#8b83ff"/></linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#111e2e"/><stop offset="1" stop-color="#0d1623"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#000" flood-opacity=".34"/></filter>
+  </defs>
+  <rect width="1600" height="980" rx="32" fill="url(#bg)"/>
+  <rect x="28" y="28" width="1544" height="924" rx="24" fill="#0a111c" stroke="#26364a"/>
+  <rect x="28" y="28" width="1544" height="70" rx="24" fill="#0c1522"/>
+  <path d="M28 74h1544" stroke="#1c2b3e"/>
+  <circle cx="68" cy="63" r="8" fill="#ff767e"/><circle cx="96" cy="63" r="8" fill="#f4c36e"/><circle cx="124" cy="63" r="8" fill="#4dd7a3"/>
+  <text x="170" y="69" fill="#eef5fd" font-family="Inter,Arial,sans-serif" font-size="21" font-weight="700" letter-spacing="2">IPA MANAGER</text>
+  <rect x="1356" y="47" width="174" height="32" rx="16" fill="#102b29" stroke="#27635b"/>
+  <circle cx="1377" cy="63" r="5" fill="#55d4a7"/><text x="1390" y="68" fill="#8de6c7" font-family="Inter,Arial,sans-serif" font-size="12">LOCAL PROCESSING</text>
+  <rect x="28" y="98" width="246" height="854" fill="#0b1420"/>
+  <path d="M274 98v854" stroke="#1d2c40"/>
+  <rect x="50" y="136" width="202" height="45" rx="11" fill="#142b43" stroke="#315a80"/>
+  <text x="73" y="165" fill="#8cc9ff" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="700">▤  Inspecionar IPA</text>
+  <g fill="#8295ad" font-family="Inter,Arial,sans-serif" font-size="15">
+    <text x="73" y="222">⌂  Início</text><text x="73" y="277">◈  Catálogo</text><text x="73" y="332">◎  Fontes</text><text x="73" y="387">▣  Biblioteca</text><text x="73" y="442">?  Central de ajuda</text>
+  </g>
+  <text x="326" y="155" fill="#72b9f8" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="2">ANÁLISE LOCAL</text>
+  <text x="326" y="205" fill="#eff6ff" font-family="Inter,Arial,sans-serif" font-size="36" font-weight="700">Inspecionar IPA</text>
+  <text x="326" y="238" fill="#8da2bb" font-family="Inter,Arial,sans-serif" font-size="16">Inspect package structure, app metadata and available hand-off options.</text>
+  <rect x="326" y="278" width="1202" height="116" rx="16" fill="url(#card)" stroke="#283c54" filter="url(#shadow)"/>
+  <rect x="350" y="301" width="58" height="58" rx="13" fill="#173a5d" stroke="#39658e"/>
+  <text x="365" y="338" fill="#a8d8ff" font-family="monospace" font-size="18" font-weight="700">IPA</text>
+  <text x="432" y="322" fill="#edf5fd" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700">Nuvio.ipa</text>
+  <text x="432" y="350" fill="#8297b0" font-family="Inter,Arial,sans-serif" font-size="13">127.4 MB · Package successfully inspected</text>
+  <rect x="1122" y="310" width="176" height="44" rx="9" fill="#173b5d" stroke="#3b6b97"/><text x="1157" y="338" fill="#b9defc" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700">Save original</text>
+  <rect x="1310" y="310" width="190" height="44" rx="9" fill="url(#blue)"/><text x="1344" y="338" fill="#071322" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700">Share IPA</text>
+  <rect x="326" y="418" width="760" height="214" rx="16" fill="url(#card)" stroke="#283c54"/>
+  <text x="352" y="457" fill="#eff6ff" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700">Application metadata</text>
+  <g font-family="Inter,Arial,sans-serif">
+    <text x="352" y="498" fill="#7e94ae" font-size="12">APPLICATION NAME</text><text x="352" y="524" fill="#e4eef9" font-size="15">Nuvio</text>
+    <text x="600" y="498" fill="#7e94ae" font-size="12">BUNDLE IDENTIFIER</text><text x="600" y="524" fill="#e4eef9" font-size="15">com.nuvio.mobile</text>
+    <text x="850" y="498" fill="#7e94ae" font-size="12">VERSION</text><text x="850" y="524" fill="#e4eef9" font-size="15">0.6.6</text>
+    <text x="352" y="570" fill="#7e94ae" font-size="12">BUILD</text><text x="352" y="596" fill="#e4eef9" font-size="15">606</text>
+    <text x="600" y="570" fill="#7e94ae" font-size="12">MINIMUM IOS</text><text x="600" y="596" fill="#e4eef9" font-size="15">17.0</text>
+    <text x="850" y="570" fill="#7e94ae" font-size="12">SIGNATURE INDICATORS</text><text x="850" y="596" fill="#e7c98d" font-size="15">Files detected · Not verified</text>
+  </g>
+  <rect x="1107" y="418" width="421" height="214" rx="16" fill="url(#card)" stroke="#2b4762"/>
+  <text x="1133" y="457" fill="#eff6ff" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700">Assisted installation</text>
+  <text x="1133" y="491" fill="#8da2bb" font-family="Inter,Arial,sans-serif" font-size="12">Hand off the original package to a compatible installer.</text>
+  <rect x="1133" y="512" width="367" height="44" rx="9" fill="#173b5d" stroke="#3b6b97"/><text x="1170" y="540" fill="#c5e2ff" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700">Send IPA to installer</text>
+  <rect x="1133" y="568" width="367" height="42" rx="9" fill="#142337" stroke="#304964"/><text x="1170" y="594" fill="#b9dafa" font-family="Inter,Arial,sans-serif" font-size="12">SideStore · HTTPS manifest</text>
+  <rect x="326" y="656" width="1202" height="270" rx="16" fill="url(#card)" stroke="#283c54"/>
+  <text x="352" y="696" fill="#eff6ff" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700">Archive structure</text>
+  <text x="1450" y="696" fill="#7fa6cb" font-family="Inter,Arial,sans-serif" font-size="13">128 entries</text>
+  <g font-family="monospace" font-size="14">
+    <text x="354" y="742" fill="#9dcfff">▾ Payload/</text><text x="390" y="780" fill="#b6c7d9">▾ Nuvio.app/</text>
+    <text x="430" y="818" fill="#d5e1ee">Info.plist</text><text x="430" y="852" fill="#d5e1ee">Nuvio</text><text x="430" y="886" fill="#d5e1ee">Assets.car</text>
+    <text x="850" y="742" fill="#8b9fb6">_CodeSignature/CodeResources</text><text x="850" y="780" fill="#8b9fb6">Frameworks/</text><text x="850" y="818" fill="#8b9fb6">embedded.mobileprovision</text>
+  </g>
+  <rect x="326" y="911" width="1202" height="5" rx="3" fill="#1c2b3e"/><rect x="326" y="911" width="1202" height="5" rx="3" fill="#5daeff"/>
+</svg>

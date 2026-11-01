@@ -316,7 +316,55 @@ $('#ipaFile').addEventListener('change', event => { const file = event.target.fi
 $('#saveIpa').addEventListener('click', () => { if (state.file) downloadBlob(state.file, state.file.name); });
 $('#shareIpa').addEventListener('click', async () => {
   if (!state.file) return;
-  await shareOrDownload(state.rebuiltIpa || state.file, state.rebuiltIpaName || state.file.name, 'IPA Manager package');
+  await shareOrDownload(state.file, state.file.name, 'IPA Manager original package');
+});
+
+// A PWA cannot sign or install arbitrary IPA files. This action hands the original
+// package to an installed app through the native share sheet when the browser allows it.
+$('#sendInstaller').addEventListener('click', async () => {
+  if (!state.file) { notify('Importe um IPA antes de enviá-lo ao instalador.'); return; }
+  const ipaName = safeFileName(state.file.name.toLowerCase().endsWith('.ipa') ? state.file.name : state.file.name + '.ipa');
+  const ipaFile = new File([state.file], ipaName, { type: 'application/octet-stream', lastModified: state.file.lastModified || Date.now() });
+  try {
+    if (typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [ipaFile] })) {
+      await navigator.share({ files: [ipaFile], title: 'Importar IPA no instalador', text: 'Arquivo IPA original. Importe-o em um instalador compatível, se disponível.' });
+      logActivity('IPA enviado à folha de compartilhamento', ipaName, 'install');
+    } else {
+      downloadBlob(state.file, ipaName);
+      notify('Compartilhamento de arquivos indisponível. O IPA original foi salvo para importação manual no instalador.');
+    }
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      console.warn('IPA share failed:', error);
+      notify('Não foi possível abrir o compartilhamento. Salve o IPA e importe-o pelo instalador.');
+    }
+  }
+});
+
+// OTA installation is only available for an already signed, provisioned app whose
+// public HTTPS manifest and IPA are hosted for a distribution method accepted by iOS.
+$('#otaInstall').addEventListener('click', () => {
+  const raw = $('#manifestUrl').value.trim();
+  let manifest;
+  try {
+    manifest = new URL(raw);
+    if (manifest.protocol !== 'https:') throw new Error('O manifest precisa estar hospedado em HTTPS.');
+    if (manifest.username || manifest.password) throw new Error('A URL não pode conter credenciais.');
+    if (!raw || raw.length > 2000) throw new Error('Informe uma URL pública válida para o manifest.plist.');
+  } catch (error) {
+    notify(error.message || 'URL de manifest inválida.');
+    return;
+  }
+  const isAppleMobile = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (!isAppleMobile) {
+    notify('A instalação por manifest é um recurso do iOS. Abra esta página no Safari do iPhone.');
+    return;
+  }
+  if (!window.confirm('O iOS tentará instalar um app publicado por este manifest. Continue somente se você confiar no desenvolvedor e na origem do arquivo.')) return;
+  const installUrl = 'itms-services://?action=download-manifest&url=' + encodeURIComponent(manifest.href);
+  logActivity('Solicitação de instalação OTA', manifest.hostname, 'install');
+  window.location.href = installUrl;
+  notify('Solicitação enviada ao iOS. O sistema só instalará o pacote se assinatura, manifesto e hospedagem forem válidos.');
 });
 $('#extractApp').addEventListener('click', async () => {
   if (!state.file || !state.appPrefix) return;
@@ -564,6 +612,7 @@ async function searchRepo(repo) {
       const assets = (release.assets || []).filter(asset => /\.(ipa|zip)$/i.test(asset.name));
       return `<article class="release-card"><div class="release-top"><div class="release-title"><b>${escapeHTML(release.name || release.tag_name)}</b><small>${escapeHTML(repo)} · ${escapeHTML(release.tag_name)} · ${release.published_at ? new Date(release.published_at).toLocaleDateString('pt-BR') : 'Data não informada'}${release.prerelease ? ' · Pré-lançamento' : ''}</small></div><span class="release-badge">${assets.length} pacote(s)</span></div>${release.body ? `<p style="font-size:10px;color:#8a9bb0;line-height:1.6;max-height:55px;overflow:hidden">${escapeHTML(release.body.slice(0,260))}${release.body.length>260?'…':''}</p>` : ''}<div class="asset-list">${assets.length ? assets.map(asset => `<div class="asset-row"><b>${escapeHTML(asset.name)}</b><small>${formatBytes(asset.size)}</small><a href="${escapeHTML(asset.browser_download_url)}" target="_blank" rel="noopener">Baixar ↗</a></div>`).join('') : '<small style="color:#71859e;font-size:10px">Nenhum arquivo IPA/ZIP nesta release.</small>'}</div></article>`;
     }).join('');
+    addSideStoreButtons($('#releaseResults'));
     logActivity('Consulta GitHub', `${repo} · ${releases.length} releases`, 'source');
   } catch (error) {
     $('#releaseResults').innerHTML = `<div class="empty-state"><b>Não foi possível consultar</b><small>${escapeHTML(error.message)}</small></div>`;
@@ -593,6 +642,44 @@ async function addSource(url) {
   } catch (error) { notify(error.message || 'Não foi possível ler o catálogo.'); }
 }
 function safeHttps(value) { try { const url = new URL(value); return url.protocol === 'https:' ? url.href : ''; } catch { return ''; } }
+
+function launchSideStoreInstall(rawUrl) {
+  const downloadUrl = safeHttps(rawUrl);
+  if (!downloadUrl) { notify('O link do IPA precisa ser HTTPS.'); return; }
+  const parsedUrl = new URL(downloadUrl);
+  if (!/\.ipa$/i.test(parsedUrl.pathname)) {
+    notify('A integração SideStore exige uma URL direta para um arquivo .ipa.');
+    return;
+  }
+  const installLink = 'sidestore://install?url=' + encodeURIComponent(downloadUrl);
+  logActivity('Abrindo IPA no SideStore', parsedUrl.hostname, 'install');
+  window.location.href = installLink;
+  notify('Solicitação enviada ao SideStore. A instalação depende de ele estar instalado, configurado e de o IPA ser compatível.');
+}
+
+function addSideStoreButtons(container) {
+  if (!container) return;
+  container.querySelectorAll('a[href]').forEach(link => {
+    let parsedUrl;
+    try { parsedUrl = new URL(link.href); } catch { return; }
+    if (parsedUrl.protocol !== 'https:' || !/\.ipa$/i.test(parsedUrl.pathname)) return;
+    const row = link.closest('.asset-row, .library-row');
+    if (!row || row.querySelector('[data-sidestore-install]')) return;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'secondary-button sidestore-install-button';
+    button.dataset.sidestoreInstall = parsedUrl.href;
+    button.textContent = 'Instalar via SideStore';
+    row.append(button);
+  });
+}
+
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-sidestore-install]');
+  if (!button) return;
+  launchSideStoreInstall(button.getAttribute('data-sidestore-install'));
+});
+
 $('#addSource').addEventListener('click', () => addSource($('#sourceUrl').value.trim()));
 $('#sourceUrl').addEventListener('keydown', event => { if (event.key === 'Enter') $('#addSource').click(); });
 $('#addNuvio').addEventListener('click', () => addSource(NUVIO_SOURCE));
@@ -611,6 +698,7 @@ function renderSourceApps(source) {
   }).join('');
 }
 function bindSourceActions(panel, sourceIndex) {
+  addSideStoreButtons(panel);
   $$('[data-version-info]', panel).forEach(button => button.addEventListener('click', () => {
     const app = state.sources[sourceIndex].apps[Number(button.dataset.versionInfo)];
     const version = app.versions[0] || {};

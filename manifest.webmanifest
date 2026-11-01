@@ -1,7 +1,7 @@
 {
   "name": "IPA Manager",
   "short_name": "IPA Manager",
-  "description": "Local IPA inspection, app bundle export, and IPA archive rebuilding for iPhone.",
+  "description": "Inspect, export, rebuild, and hand off iOS IPA packages to compatible installers.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
