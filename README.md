@@ -8,7 +8,7 @@ IPA Manager helps users understand the structure and metadata of an iOS applicat
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![PWA](https://img.shields.io/badge/PWA-Static%20Web%20App-6f42c1)
-![Status](https://img.shields.io/badge/status-preview%200.5.0-orange)
+![Status](https://img.shields.io/badge/status-preview%200.5.1-orange)
 ![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20modern%20browsers-lightgrey)
 
 ## Project status
@@ -126,6 +126,13 @@ Keep manifest.webmanifest, sw.js, zip-engine.js, feature-flags.js, and the icon 
 5. Save or share the output file through the browser.
 
 The .app folder inside an exported ZIP is not directly installable from the iOS Files app. Rebuilding a ZIP container does not repair or sign the application.
+
+
+### Downloading on iPhone (Preview 0.5.1)
+
+GitHub Release asset URLs and AltStore source download URLs now present **Download in Safari** as the primary action. This uses the browser's ordinary download/navigation mechanism and does not require a CORS-readable response. After saving the IPA in Files, return to **Inspect IPA** and select the downloaded file.
+
+**Download and verify (experimental)** remains available for hosts that permit cross-origin reads. It supports progress, cancellation and basic ZIP signature checks, but many release mirrors block JavaScript fetch requests through CORS. This limitation does not imply package corruption. If that path fails, the error panel moves into the current view and offers the Safari download link. Native downloads are not automatically verified, and saving an IPA does not install it.
 
 ## Managed installation: intentionally disabled
 
