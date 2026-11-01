@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080b12">
+  <meta name="description" content="Laboratório experimental OTA do IPA Manager: gere um manifesto e teste a solicitação nativa de instalação de apps iOS autorizados.">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./ota-lab.css">
+  <title>Laboratório OTA — IPA Manager</title>
+  <script src="./ota-engine.js" defer></script>
+  <script src="./ota-lab.js" defer></script>
+</head>
+<body class="ota-page">
+  <div class="ambient ambient-a" aria-hidden="true"></div>
+  <div class="ambient ambient-b" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="brand" href="./index.html" aria-label="Voltar ao IPA Manager">
+      <span class="brand-mark"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3.5 27 9.7v12.6L16 28.5 5 22.3V9.7L16 3.5Z"/><path d="M16 9v14M9.5 12.5l13 7M22.5 12.5l-13 7"/></svg></span>
+      <span><strong>IPA<span>MANAGER</span></strong><small>laboratório de distribuição OTA</small></span>
+    </a>
+    <a class="ota-back" href="./index.html">Voltar ao aplicativo</a>
+  </header>
+  <main class="ota-shell">
+    <div class="ota-heading">
+      <div class="eyebrow">PESQUISA EXPERIMENTAL · PREVIEW 0.8.0</div>
+      <h1>Instalação OTA <em>pelo iPhone.</em></h1>
+      <p>Teste o protocolo de instalação nativo do iOS com um aplicativo que já possua uma distribuição válida. Nenhum computador é necessário para usar esta página.</p>
+    </div>
+    <div class="ota-warning" role="note">
+      <span aria-hidden="true">ⓘ</span>
+      <p><strong>Não é um desbloqueio do iOS.</strong> Um manifesto não assina, aprova nem instala um IPA arbitrário. O dispositivo decide se aceita o aplicativo. Uma tentativa iniciada não significa instalação concluída.</p>
+    </div>
+
+    <section class="ota-panel" aria-labelledby="device-title">
+      <div class="ota-section-heading">
+        <span class="ota-step">01</span>
+        <div><h2 id="device-title">Ambiente do dispositivo</h2><p>Verificações locais que podemos fazer antes da tentativa.</p></div>
+      </div>
+      <div class="ota-diagnostics" id="otaDeviceChecks" aria-live="polite"></div>
+    </section>
+
+    <section class="ota-panel" aria-labelledby="manifest-title">
+      <div class="ota-section-heading">
+        <span class="ota-step">02</span>
+        <div><h2 id="manifest-title">Preparar o manifesto</h2><p>Você precisa possuir um IPA já hospedado em HTTPS e autorizado para distribuição OTA.</p></div>
+      </div>
+      <form id="otaManifestForm" novalidate>
+        <label for="otaIpaUrl">URL pública do IPA <small>(HTTPS, termina em .ipa)</small></label>
+        <input id="otaIpaUrl" name="ipaUrl" type="url" inputmode="url" placeholder="https://cdn.exemplo.com/MeuApp.ipa" maxlength="2048" required autocomplete="off">
+        <div class="ota-grid-two">
+          <div><label for="otaBundleId">Bundle ID</label><input id="otaBundleId" name="bundleId" placeholder="com.exemplo.meuapp" maxlength="255" required autocomplete="off"></div>
+          <div><label for="otaVersion">Versão</label><input id="otaVersion" name="version" placeholder="1.0.0" maxlength="40" required autocomplete="off"></div>
+        </div>
+        <label for="otaAppTitle">Nome do aplicativo</label>
+        <input id="otaAppTitle" name="title" placeholder="Meu aplicativo" maxlength="100" required>
+        <button class="primary-button" type="submit">Gerar arquivo manifest.plist</button>
+        <p class="ota-status" id="otaManifestStatus" role="status">Os dados são processados no seu navegador. O IPA não é enviado ao IPA Manager.</p>
+      </form>
+      <div id="otaManifestReady" class="ota-ready hidden">
+        <div class="ota-ready-head"><strong>Manifesto preparado</strong><span>Local · não assinado</span></div>
+        <p>Salve <code>manifest.plist</code> e hospede-o em uma URL HTTPS pública. A hospedagem precisa oferecer o XML completo e permitir que o iOS baixe o IPA referenciado.</p>
+        <button class="secondary-button" type="button" id="otaSaveManifest">Salvar manifest.plist</button>
+        <details><summary>Ver o conteúdo XML</summary><pre id="otaManifestPreview"></pre></details>
+      </div>
+    </section>
+
+    <section class="ota-panel" aria-labelledby="attempt-title">
+      <div class="ota-section-heading">
+        <span class="ota-step">03</span>
+        <div><h2 id="attempt-title">Solicitar instalação ao iOS</h2><p>Esta etapa usa um manifesto que já está hospedado na internet.</p></div>
+      </div>
+      <label for="otaManifestUrl">URL HTTPS do manifesto publicado</label>
+      <input id="otaManifestUrl" type="url" inputmode="url" placeholder="https://exemplo.com/manifest.plist" maxlength="2048" autocomplete="off">
+      <button class="secondary-button" id="otaCheckManifest" type="button">Verificar acesso ao manifesto</button>
+      <p class="ota-status" id="otaRemoteStatus" role="status">Ainda não verificado. Falhas de CORS não significam que o iPhone rejeitará a instalação.</p>
+      <label class="ota-consent">
+        <input type="checkbox" id="otaConfirm">
+        <span>Confirmo que tenho autorização para distribuir este aplicativo por OTA e entendo que a assinatura e o provisionamento precisam ser aceitos pelo iOS.</span>
+      </label>
+      <button class="primary-button" id="otaLaunch" type="button" disabled>Solicitar instalação ao iOS</button>
+      <p class="ota-status" id="otaLaunchStatus" role="status">Nenhuma tentativa iniciada.</p>
+    </section>
+
+    <section class="ota-panel" aria-labelledby="result-title">
+      <div class="ota-section-heading">
+        <span class="ota-step">04</span>
+        <div><h2 id="result-title">Registrar o resultado</h2><p>O Safari não informa ao IPA Manager se um app foi instalado. Registre o que o iPhone exibiu.</p></div>
+      </div>
+      <label for="otaOutcome">O que aconteceu no iPhone?</label>
+      <select id="otaOutcome">
+        <option value="not-tested">Ainda não testei</option>
+        <option value="prompt">O iOS mostrou uma solicitação de instalação</option>
+        <option value="download">O app começou a baixar</option>
+        <option value="installed">O app foi instalado e abriu normalmente</option>
+        <option value="blocked">O iOS recusou ou não concluiu a instalação</option>
+        <option value="nothing">Nada aconteceu ao tocar no botão</option>
+      </select>
+      <label for="otaError">Mensagem exibida pelo iOS <small>(opcional; não informe dados pessoais)</small></label>
+      <textarea id="otaError" rows="3" maxlength="400" placeholder="Ex.: Não foi possível instalar o aplicativo"></textarea>
+      <div class="ota-buttons">
+        <button class="secondary-button" id="otaExportReport" type="button">Exportar diagnóstico JSON</button>
+        <button class="secondary-button" id="otaCopyReport" type="button">Copiar diagnóstico</button>
+      </div>
+      <p class="ota-status" id="otaReportStatus" role="status">O relatório não inclui URLs completas, identificadores do aparelho ou credenciais.</p>
+    </section>
+
+    <section class="ota-panel ota-doc" aria-labelledby="limits-title">
+      <h2 id="limits-title">Como interpretar falhas</h2>
+      <div class="ota-table-wrap">
+        <table>
+          <thead><tr><th>Sintoma</th><th>Possível causa</th><th>O que verificar</th></tr></thead>
+          <tbody>
+            <tr><td>Nada acontece</td><td>O navegador não encaminhou o esquema <code>itms-services</code></td><td>Abrir pelo Safari, tocar diretamente no botão e conferir o manifesto</td></tr>
+            <tr><td>Erro ao obter arquivo</td><td>Manifesto ou IPA inacessível, URL incorreta ou resposta do servidor</td><td>HTTPS público, disponibilidade, MIME e redirecionamentos</td></tr>
+            <tr><td>Falha de verificação</td><td>Certificado, assinatura, perfil ou elegibilidade do dispositivo</td><td>Validar distribuição com as credenciais e ferramentas do responsável</td></tr>
+            <tr><td>App instalado mas não abre</td><td>Confiança, expiração, incompatibilidade ou restrições de execução</td><td>Conferir perfil de distribuição, requisitos do app e mensagem do sistema</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Esta tabela descreve hipóteses de diagnóstico, não uma identificação automática da causa. Para instalação corporativa OTA, a Apple exige assinatura e provisionamento apropriados. Em versões recentes do iOS, aplicativos corporativos instalados manualmente podem exigir reinicialização para concluir a confiança no perfil.</p>
+      <a href="https://support.apple.com/guide/deployment/depce7cefc4d/web" target="_blank" rel="noopener noreferrer">Requisitos oficiais da Apple para apps corporativos OTA ↗</a>
+    </section>
+  </main>
+  <footer class="footer"><span>IPA MANAGER · OTA LAB</span><span>Experimento local. O iOS toma a decisão de instalação.</span></footer>
+</body>
+</html>
