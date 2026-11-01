@@ -468,8 +468,8 @@ async function searchRepo(repo) {
       const assets = (release.assets || []).filter(asset => /\.(ipa|zip)$/i.test(asset.name));
       const assetMarkup = assets.length ? assets.map(asset => {
         const downloadUrl = safeDownloadUrl(asset.browser_download_url);
-        const direct = downloadUrl ? '<a href="' + escapeHTML(downloadUrl) + '" target="_blank" rel="noopener noreferrer">Link direto ↗</a>' : '<span class="hint">URL indisponível</span>';
-        const button = downloadUrl ? '<button type="button" class="secondary-button" data-download-url="' + escapeHTML(downloadUrl) + '" data-download-name="' + escapeHTML(asset.name) + '">Baixar no IPA Manager</button>' : '';
+        const direct = downloadUrl ? '<a class="primary-button direct-download-link" href="' + escapeHTML(downloadUrl) + '" target="_blank" rel="noopener noreferrer">Baixar pelo Safari ↗</a>' : '<span class="hint">URL indisponível</span>';
+        const button = downloadUrl ? '<button type="button" class="secondary-button" data-download-url="' + escapeHTML(downloadUrl) + '" data-download-name="' + escapeHTML(asset.name) + '">Baixar e verificar (experimental)</button>' : '';
         return '<div class="asset-row"><b>' + escapeHTML(asset.name) + '</b><small>' + formatBytes(asset.size) + '</small><div class="asset-actions">' + button + direct + '</div></div>';
       }).join('') : '<small style="color:#71859e;font-size:10px">Nenhum arquivo IPA/ZIP nesta release.</small>';
       return '<article class="release-card"><div class="release-top"><div class="release-title"><b>' + escapeHTML(release.name || release.tag_name) + '</b><small>' + escapeHTML(repo) + ' · ' + escapeHTML(release.tag_name) + ' · ' + (release.published_at ? new Date(release.published_at).toLocaleDateString('pt-BR') : 'Data não informada') + (release.prerelease ? ' · Pré-lançamento' : '') + '</small></div><span class="release-badge">' + assets.length + ' pacote(s)</span></div>' + (release.body ? '<p style="font-size:10px;color:#8a9bb0;line-height:1.6;max-height:55px;overflow:hidden">' + escapeHTML(release.body.slice(0,260)) + (release.body.length > 260 ? '…' : '') + '</p>' : '') + '<div class="asset-list">' + assetMarkup + '</div></article>';
@@ -518,6 +518,11 @@ async function startRemoteDownload(url, filename) {
   const controller = new AbortController();
   activeDownloadController = controller;
   const panel = $('#downloadPanel');
+  const currentView = $('.view.active');
+  if (currentView) {
+    currentView.prepend(panel);
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
   const progress = $('#downloadProgress');
   const cancel = $('#cancelDownload');
   const directLink = $('#directDownloadLink');
@@ -552,10 +557,13 @@ async function startRemoteDownload(url, filename) {
     } else {
       state.downloadedBlob = null; state.downloadedName = '';
       $('#saveDownloadedFile').classList.add('hidden'); $('#shareDownloadedFile').classList.add('hidden');
-      $('#downloadTitle').textContent = 'Não foi possível baixar pelo IPA Manager';
-      $('#downloadStatus').textContent = error.message || 'Falha durante o download.';
-      directLink.textContent = 'Tentar download direto ↗'; directLink.classList.remove('hidden');
-      notify('Download interno indisponível. Você pode tentar o link direto.');
+      $('#downloadTitle').textContent = 'Download com verificação indisponível';
+      const likelyNetworkError = error instanceof TypeError || /failed to fetch|load failed|networkerror|cors/i.test(error.message || '');
+      $('#downloadStatus').textContent = likelyNetworkError
+        ? 'O navegador não conseguiu ler esse download. O servidor pode bloquear CORS ou a conexão pode ter falhado. Use o link direto do Safari.'
+        : (error.message || 'Falha durante o download.');
+      directLink.textContent = 'Baixar pelo Safari ↗'; directLink.classList.remove('hidden');
+      notify('Não foi possível verificar o download. Toque em Baixar pelo Safari.');
     }
   } finally {
     if (activeDownloadController === controller) activeDownloadController = null;
@@ -577,6 +585,10 @@ document.addEventListener('click', event => {
   event.preventDefault();
   startRemoteDownload(button.dataset.downloadUrl, button.dataset.downloadName);
 });
+$('#importDownloadedFile').addEventListener('click', () => {
+  navigate('inspect');
+  $('#ipaFile').click();
+});
 
 $('#addSource').addEventListener('click', () => addSource($('#sourceUrl').value.trim()));
 $('#sourceUrl').addEventListener('keydown', event => { if (event.key === 'Enter') $('#addSource').click(); });
@@ -594,7 +606,7 @@ function renderSourceApps(source) {
     const version = app.versions[0] || {};
     const downloadUrl = safeDownloadUrl(version.downloadURL);
     const downloadName = safeFileName(app.name + '-' + (version.version || 'latest') + '.ipa');
-    const downloadButton = downloadUrl ? '<button type="button" class="secondary-button" data-download-url="' + escapeHTML(downloadUrl) + '" data-download-name="' + escapeHTML(downloadName) + '">Baixar no IPA Manager</button><a class="text-button" target="_blank" rel="noopener noreferrer" href="' + escapeHTML(downloadUrl) + '">Link direto ↗</a>' : '<span class="hint">Download indisponível</span>';
+    const downloadButton = downloadUrl ? '<a class="primary-button direct-download-link" target="_blank" rel="noopener noreferrer" href="' + escapeHTML(downloadUrl) + '">Baixar pelo Safari ↗</a><button type="button" class="secondary-button" data-download-url="' + escapeHTML(downloadUrl) + '" data-download-name="' + escapeHTML(downloadName) + '">Baixar e verificar (experimental)</button>' : '<span class="hint">Download indisponível</span>';
     const versionDetails = (version.sha256 ? 'SHA-256 publicado: ' + escapeHTML(version.sha256) : 'Esta versão não publica hash SHA-256.') + (version.minOSVersion ? ' · iOS mínimo declarado ' + escapeHTML(version.minOSVersion) : '');
     return '<div class="library-row"><div class="row-details"><b>' + escapeHTML(app.name) + '</b><small>' + escapeHTML(app.developerName) + ' · ' + escapeHTML(version.version || 'Versão não informada') + ' · ' + formatBytes(version.size) + '</small><small>' + escapeHTML(app.bundleIdentifier) + '</small></div>' + downloadButton + '<button class="text-button" data-version-info="' + appIndex + '">Detalhes</button></div><div class="hint" style="margin:0 0 12px">' + versionDetails + '</div>';
   }).join('');
