@@ -4,7 +4,7 @@ const NUVIO_SOURCE = 'https://raw.githubusercontent.com/NuvioMedia/NuvioMobile/c
 const STORAGE_KEY = 'ipa-manager-v1';
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const state = { file: null, entries: [], info: null, appPrefix: '', hash: '', currentEntry: null, appBundleZip: null, appBundleName: '', rebuiltIpa: null, rebuiltIpaName: '', downloadedBlob: null, downloadedName: '', libraryTab: 'packages', activity: [], sources: [], packages: [], checks: 0 };
+const state = { file: null, entries: [], info: null, appPrefix: '', hash: '', currentEntry: null, appBundleZip: null, appBundleName: '', rebuiltIpa: null, rebuiltIpaName: '', downloadedBlob: null, downloadedName: '', provisioningReport: null, libraryTab: 'packages', activity: [], sources: [], packages: [], checks: 0 };
 let toastTimer;
 
 function escapeHTML(value) {
@@ -68,6 +68,7 @@ $('.notice-close')?.addEventListener('click', () => $('.notice')?.remove());
 const { ZIP, crc32 } = window.IPAZipEngine;
 const { download: downloadRemoteArchive, validateDownloadUrl } = window.IPADownloadEngine;
 const { auditExecutable, limits: signatureAuditLimits } = window.IPASignatureEngine;
+const { extractEmbeddedPlist, analyzeProvisioningProfile, limits: provisioningLimits } = window.IPAProvisioningEngine;
 
 // Apple binary/XML property-list decoder. Binary format supports common scalar, array and dictionary types.
 function parsePlist(bytes) {
@@ -166,6 +167,9 @@ async function inspectFile(file) {
   state.file = file; state.entries = []; state.info = null; state.appPrefix = ''; state.hash = ''; state.appBundleZip = null; state.appBundleName = ''; state.rebuiltIpa = null; state.rebuiltIpaName = '';
   $('#appExportPanel')?.classList.add('hidden'); $('#rebuiltPanel')?.classList.add('hidden');
   $('#signatureAuditPanel').classList.add('hidden'); $('#signatureAuditStatus').textContent = 'Aguardando verificação'; $('#signatureAuditResults').textContent = '';
+  state.provisioningReport = null;
+  $('#provisioningPanel').classList.add('hidden'); $('#provisioningResults').textContent = '';
+  $('#provisioningExport').classList.add('hidden');
   $('#extractApp').disabled = true; $('#rebuildIpa').disabled = true;
   $('#filePanel').classList.remove('hidden'); $('#fileName').textContent = file.name; $('#fileSize').textContent = formatBytes(file.size);
   $('#metadataGrid').innerHTML = ''; $('#entryList').innerHTML = ''; $('#hashResult').classList.add('hidden'); $('#signatureCard').textContent = '';
@@ -204,6 +208,9 @@ async function inspectFile(file) {
     $('#signatureAuditPanel').classList.remove('hidden');
     $('#signatureAuditStatus').textContent = 'Pronto para examinar o executável principal';
     $('#verifySignature').disabled = false;
+    $('#provisioningPanel').classList.remove('hidden');
+    $('#provisioningStatus').textContent = 'Pronto para examinar o perfil incorporado ao aplicativo.';
+    $('#inspectProvisioning').disabled = false;
     const record = { name: file.name, size: file.size, bundleId: info.CFBundleIdentifier || '', version: info.CFBundleShortVersionString || '', date: new Date().toISOString() };
     state.packages = [record, ...state.packages.filter(p => !(p.name === record.name && p.size === record.size))].slice(0, 50);
     logActivity(file.name, `${record.bundleId || 'Bundle ID não declarado'} · ${formatBytes(file.size)}`, 'file');
@@ -298,6 +305,81 @@ $('#verifySignature').addEventListener('click', async () => {
   }
 });
 
+// Local provisioning diagnostics; no Apple account, server, or certificates required.
+$('#inspectProvisioning').addEventListener('click', async () => {
+  const originalFile = state.file;
+  if (!originalFile || !state.appPrefix || !state.info) return;
+  const button = $('#inspectProvisioning');
+  const reportButton = $('#provisioningExport');
+  const status = $('#provisioningStatus');
+  const details = $('#provisioningResults');
+  button.disabled = true; button.textContent = 'Analisando…';
+  state.provisioningReport = null; reportButton.classList.add('hidden');
+  details.textContent = '';
+  try {
+    const path = state.appPrefix + 'embedded.mobileprovision';
+    const entry = state.entries.find(item => !item.directory && item.name === path);
+    if (!entry) {
+      status.textContent = 'Nenhum embedded.mobileprovision no bundle principal. Isso não prova que o IPA esteja sem assinatura.';
+      details.textContent = 'Não é possível determinar a elegibilidade de instalação somente com esta ausência.';
+      return;
+    }
+    if (entry.size > provisioningLimits.maxProfileBytes) throw new Error('Perfil maior que o limite de 4 MiB.');
+    status.textContent = 'Extraindo e analisando o perfil localmente…';
+    const bytes = await ZIP.read(originalFile, entry, { maxOutputBytes: provisioningLimits.maxProfileBytes });
+    if (state.file !== originalFile) return;
+    const xml = extractEmbeddedPlist(bytes);
+    const plist = parsePlist(new TextEncoder().encode(xml));
+    const result = analyzeProvisioningProfile(plist, String(state.info.CFBundleIdentifier || ''));
+    if (state.file !== originalFile) return;
+    state.provisioningReport = Object.freeze({
+      schemaVersion: 1, analyzedAt: new Date().toISOString(),
+      packageName: originalFile.name, bundleIdentifier: String(state.info.CFBundleIdentifier || ''),
+      analysis: result, warning: 'Diagnóstico local: não valida CMS, certificados Apple nem permissão de instalação.'
+    });
+    const types = {
+      'desenvolvimento': 'Desenvolvimento (indícios)',
+      'ad-hoc-ou-teste': 'Ad Hoc ou testes (indícios)',
+      'in-house-ou-distribuicao-especial': 'Todos os dispositivos declarados (tipo não confirmado)',
+      'distribuicao-sem-lista': 'Distribuição sem lista de dispositivos (tipo não confirmado)'
+    };
+    const matches = { true: 'Correspondência encontrada', false: 'Divergência detectada', null: 'Não foi possível determinar' };
+    const fields = [
+      ['Categoria provável', types[result.type] || 'Indeterminada'],
+      ['Validade declarada', result.expirationDate ? new Date(result.expirationDate).toLocaleDateString('pt-BR') : 'Não informada'],
+      ['Expirado', result.expired === null ? 'Não determinado' : result.expired ? 'Sim' : 'Não, segundo a data local'],
+      ['Bundle ID x perfil', matches[String(result.bundleIdMatch)]],
+      ['Dispositivos no perfil', result.registeredDeviceCount === null ? 'Lista não declarada' : result.registeredDeviceCount + ' identificador(es), sem exibir UDIDs'],
+      ['Bloco CMS', 'Não verificado criptograficamente'],
+      ['Instalável neste iPhone', 'Não determinado']
+    ];
+    details.innerHTML = fields.map(([label, value]) => '<div class="detail-line"><span>' + escapeHTML(label) + '</span><b>' + escapeHTML(value) + '</b></div>').join('');
+    if (result.issues.length) {
+      const problems = document.createElement('p');
+      problems.className = 'provisioning-warnings';
+      problems.textContent = result.issues.join(' ');
+      details.append(problems);
+    }
+    status.textContent = result.status === 'inconsistente'
+      ? 'Foram encontradas inconsistências nos metadados declarados no perfil.'
+      : 'Metadados examinados. A autorização de instalação continua indeterminada.';
+    reportButton.classList.remove('hidden');
+  } catch (error) {
+    if (state.file === originalFile) {
+      status.textContent = 'Não foi possível analisar o perfil: ' + error.message;
+      details.textContent = 'O resultado é inconclusivo; nenhum certificado foi validado.';
+    }
+  } finally {
+    button.disabled = false; button.textContent = 'Analisar perfil de provisionamento';
+  }
+});
+$('#provisioningExport').addEventListener('click', () => {
+  if (!state.provisioningReport) return;
+  const filename = safeFileName((state.info?.CFBundleIdentifier || 'ipa') + '-provisioning-report.json');
+  const blob = new Blob([JSON.stringify(state.provisioningReport, null, 2)], { type: 'application/json' });
+  downloadBlob(blob, filename);
+});
+
 $('#homeImport').addEventListener('click', () => { navigate('inspect'); $('#ipaFile').click(); });
 $('#chooseFile').addEventListener('click', () => $('#ipaFile').click());
 $('#ipaFile').addEventListener('change', event => { const file = event.target.files?.[0]; if (file) inspectFile(file); event.target.value = ''; });
@@ -361,7 +443,7 @@ $('#shareRebuiltIpa').addEventListener('click', async () => {
   if (state.rebuiltIpa) await shareOrDownload(state.rebuiltIpa, state.rebuiltIpaName, 'Reconstructed IPA');
 });
 
-$('#removeFile').addEventListener('click', () => { state.file = null; state.entries = []; state.info = null; state.appPrefix = ''; state.appBundleZip = null; state.rebuiltIpa = null; $('#appExportPanel').classList.add('hidden'); $('#rebuiltPanel').classList.add('hidden'); $('#signatureAuditPanel').classList.add('hidden'); $('#filePanel').classList.add('hidden'); $('#extractApp').disabled = true; $('#rebuildIpa').disabled = true; $('#progressBar').style.background = '#54a9ff'; notify('Arquivo removido da sessão.'); });
+$('#removeFile').addEventListener('click', () => { state.file = null; state.entries = []; state.info = null; state.appPrefix = ''; state.appBundleZip = null; state.rebuiltIpa = null; $('#appExportPanel').classList.add('hidden'); $('#rebuiltPanel').classList.add('hidden'); $('#signatureAuditPanel').classList.add('hidden'); $('#provisioningPanel').classList.add('hidden'); state.provisioningReport = null; $('#filePanel').classList.add('hidden'); $('#extractApp').disabled = true; $('#rebuildIpa').disabled = true; $('#progressBar').style.background = '#54a9ff'; notify('Arquivo removido da sessão.'); });
 const dropzone = $('#dropzone');
 dropzone.addEventListener('dragover', event => { event.preventDefault(); dropzone.classList.add('dragging'); });
 dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragging'));
