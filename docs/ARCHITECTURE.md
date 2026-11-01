@@ -12,10 +12,11 @@ The current repository is not yet a React/Vite application, does not contain a b
 - styles.css: responsive visual system.
 - app.js: UI state, application workflows, plist decoding, catalog and release browsing, local library.
 - zip-engine.js: ZIP central-directory parsing, bounded entry reading, path validation, and CRC-32.
+- download-engine.js: HTTPS-only public archive downloads, streamed size enforcement, cancellation, progress callbacks, and ZIP signature checks.
 - feature-flags.js: default-off distribution capability flags.
 - sw.js: PWA shell cache.
 
-The ZIP engine is isolated from DOM/UI code so it can be tested with Node.js and later moved into a Web Worker without changing its public contract.
+The ZIP and download engines are isolated from DOM/UI code so they can be tested with Node.js and later moved into Web Workers without changing their public contracts. Remote in-app downloads require CORS and use a capped browser Blob; direct browser links remain the fallback.
 
 ## Target architecture
 
