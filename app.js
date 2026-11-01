@@ -4,7 +4,7 @@ const NUVIO_SOURCE = 'https://raw.githubusercontent.com/NuvioMedia/NuvioMobile/c
 const STORAGE_KEY = 'ipa-manager-v1';
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const state = { file: null, entries: [], info: null, appPrefix: '', hash: '', currentEntry: null, appBundleZip: null, appBundleName: '', rebuiltIpa: null, rebuiltIpaName: '', libraryTab: 'packages', activity: [], sources: [], packages: [], checks: 0 };
+const state = { file: null, entries: [], info: null, appPrefix: '', hash: '', currentEntry: null, appBundleZip: null, appBundleName: '', rebuiltIpa: null, rebuiltIpaName: '', downloadedBlob: null, downloadedName: '', libraryTab: 'packages', activity: [], sources: [], packages: [], checks: 0 };
 let toastTimer;
 
 function escapeHTML(value) {
@@ -522,6 +522,8 @@ async function startRemoteDownload(url, filename) {
   const cancel = $('#cancelDownload');
   const directLink = $('#directDownloadLink');
   panel.classList.remove('hidden');
+  state.downloadedBlob = null; state.downloadedName = '';
+  $('#saveDownloadedFile').classList.add('hidden'); $('#shareDownloadedFile').classList.add('hidden');
   $('#downloadTitle').textContent = 'Preparando download';
   $('#downloadStatus').textContent = 'Conectando ao servidor e verificando o pacote…';
   $('#downloadBytes').textContent = '0 B';
@@ -531,20 +533,25 @@ async function startRemoteDownload(url, filename) {
   try {
     const result = await downloadRemoteArchive(safeUrl, { signal: controller.signal, onProgress: updateDownloadProgress });
     const safeName = safeFileName(filename || 'application.ipa');
-    downloadBlob(result.blob, safeName);
-    $('#downloadTitle').textContent = 'Download concluído';
-    $('#downloadStatus').textContent = safeName + ' foi recebido e passou pela verificação da assinatura ZIP.';
+    state.downloadedBlob = result.blob; state.downloadedName = safeName;
+    $('#downloadTitle').textContent = 'Arquivo pronto para salvar';
+    $('#downloadStatus').textContent = safeName + ' foi recebido e passou pela verificação ZIP. Escolha como deseja exportá-lo.';
+    $('#saveDownloadedFile').classList.remove('hidden'); $('#shareDownloadedFile').classList.remove('hidden');
     $('#downloadBytes').textContent = formatBytes(result.bytes);
     progress.max = 100; progress.value = 100;
     directLink.classList.add('hidden');
-    logActivity('Download concluído', safeName + ' · ' + formatBytes(result.bytes), 'download');
-    notify('Download concluído. Confira Downloads/Arquivos.');
+    logActivity('Download recebido', safeName + ' · ' + formatBytes(result.bytes), 'download');
+    notify('Arquivo recebido e validado. Escolha Salvar ou Compartilhar.');
   } catch (error) {
     if (error.name === 'AbortError') {
+      state.downloadedBlob = null; state.downloadedName = '';
+      $('#saveDownloadedFile').classList.add('hidden'); $('#shareDownloadedFile').classList.add('hidden');
       $('#downloadTitle').textContent = 'Download cancelado';
       $('#downloadStatus').textContent = 'A transferência foi interrompida. Nenhum arquivo foi salvo.';
       notify('Download cancelado.');
     } else {
+      state.downloadedBlob = null; state.downloadedName = '';
+      $('#saveDownloadedFile').classList.add('hidden'); $('#shareDownloadedFile').classList.add('hidden');
       $('#downloadTitle').textContent = 'Não foi possível baixar pelo IPA Manager';
       $('#downloadStatus').textContent = error.message || 'Falha durante o download.';
       directLink.textContent = 'Tentar download direto ↗'; directLink.classList.remove('hidden');
@@ -556,6 +563,14 @@ async function startRemoteDownload(url, filename) {
   }
 }
 $('#cancelDownload').addEventListener('click', () => { if (activeDownloadController) activeDownloadController.abort(); });
+$('#saveDownloadedFile').addEventListener('click', () => {
+  if (!state.downloadedBlob) return;
+  downloadBlob(state.downloadedBlob, state.downloadedName);
+  notify('Arquivo preparado para salvar em Downloads/Arquivos.');
+});
+$('#shareDownloadedFile').addEventListener('click', async () => {
+  if (state.downloadedBlob) await shareOrDownload(state.downloadedBlob, state.downloadedName, 'IPA Manager download');
+});
 document.addEventListener('click', event => {
   const button = event.target.closest('[data-download-url]');
   if (!button || button.disabled) return;
