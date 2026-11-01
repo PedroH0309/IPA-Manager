@@ -142,3 +142,16 @@ test('copied diagnostic excludes sensitive URLs and never asserts install verifi
   assert.ok(!raw.includes('do-not-export'));
   assert.ok(!raw.includes('cdn.example.org'));
 });
+
+test('diagnostic text redacts pasted URL, email, token and 40-hex identifier', async () => {
+  const { el, readClipboard } = makeBrowser();
+  el('otaError').value = 'Erro https://example.org/private?key=42, conta pessoa@example.org token=abc123 ' +
+    '0123456789abcdef0123456789abcdef01234567';
+  await el('otaCopyReport').trigger('click');
+  const exported = readClipboard();
+  assert.ok(!exported.includes('example.org'));
+  assert.ok(!exported.includes('pessoa@example.org'));
+  assert.ok(!exported.includes('abc123'));
+  assert.ok(!exported.includes('0123456789abcdef'));
+  assert.match(exported, /omitida/);
+});
