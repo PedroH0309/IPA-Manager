@@ -93,3 +93,10 @@
 .download-panel-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .download-panel-actions button { min-width: 132px; }
 @media (max-width: 420px) { .download-panel-actions button { flex: 1 1 100%; } }
+
+/* Preview 0.5.1: reliable native browser downloads on iOS. */
+.direct-download-link { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; white-space:nowrap; }
+.download-tip { color:#91a7bd; font-size:11px; line-height:1.5; margin:0; }
+.download-panel { scroll-margin-top:20px; }
+.asset-actions > a.primary-button { color:#e7f2ff; }
+@media (max-width:640px) { .direct-download-link { min-height:38px; } .asset-actions > button { white-space:normal; } }
